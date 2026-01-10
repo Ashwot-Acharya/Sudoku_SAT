@@ -1,0 +1,212 @@
+\documentclass{article}
+\usepackage{amsmath, amssymb}
+\usepackage{graphicx}
+\usepackage{geometry}
+\usepackage{braket}
+\usepackage[backend=biber,style=authoryear]{biblatex}
+\addbibresource{references.bib}
+\geometry{a4paper, margin=1in}
+\usepackage{titlesec}
+\usepackage{tikz} 
+\geometry{
+  left=1.2in,
+  right=1.2in,
+  top=1.1in,
+  bottom=1.1in
+}
+\usetikzlibrary{arrows.meta, positioning}
+\titleformat{\section}{\large\bfseries}{\thesection}{1em}{}
+\titleformat{\subsection}{\normalsize\bfseries}{\thesubsection}{1em}{}
+
+\date{\today}
+\begin{document}
+\hbadness=10000
+\begin{titlepage}
+    \begin{center}
+      
+        \Large\bfseries
+        SAT Based approach to solving sudoku\\[2cm]
+        
+        \normalsize
+        THIRD YEAR PROJECT REPORT\\[2ex]
+        
+        \small
+        SUBMITTED IN PARTIAL FULFILLMENT OF THE REQUIREMENTS FOR\\
+        THE DEGREE OF BSC. IN COMPUTATIONAL MATHEMATICS\\[2cm]
+        
+        \normalsize
+        BY\\[2ex]
+        \textbf{Ashwot Acharya, Bishesh Bohora, Supreme Chaudhary, Lakki Thapa}\\[2cm]
+        
+        
+        DEPARTMENT OF MATHEMATICS\\
+        KATHMANDU UNIVERSITY\\
+        DHULIKHEL, NEPAL\\[2ex]
+                
+        \vfill
+    \end{center}
+\end{titlepage}
+\section{CNF Conversion for  $  4 \times 4 $  sudoku } 
+
+\subsection{What is CNF?}
+A boolean formula is said to be in a conjective normal form if it is a conjuction of clauses , where each clause is a disjunction of literals.\cite{HuthRyan2004}
+
+To show how a sudoku is converted to a Conjective Normal Form (CNF) let us consider a basic $4 \times 4 $ sudoku like the following: 
+
+\[
+\renewcommand{\arraystretch}{2.5}
+\begin{array}{|p{2cm}|p{2cm}||p{2cm}|p{2cm}|}
+\hline
+ & 2 &  &  \\
+\hline
+ &  & 3 &  \\
+\hline\hline
+ & 3  &  &  \\
+\hline
+ &  & 1 &  \\
+\hline
+\end{array}
+\]
+\subsection{Basic representation} 
+Each cell in a $4 \times 4$ sudoku has a total of 4 different possible values 
+for the ease of representation let us consider the following : \\
+$i$:  row number  \\
+$j$: column number \\ 
+$k$: possible input value  \\  
+$ i, j , k \in \{ 1 , 2 , 3, 4 \} $ \\ 
+And hence any cell  $x $ can be represented as : 
+$ x_{ijk} $
+
+\subsection{Clause for each cells} 
+Since there only exist 1 input in each cell it can be written in terms of logic as : \\ 
+\[ ( x_{ij1} \vee x_{ij2} \vee x_{ij3} \vee x_{ij4}) \]
+so for first cell we can represent the logic as : 
+   $ (x_{111} \vee x_{112} \vee x_{113} \vee x_{114} ) $ \\ 
+rewriting for each cell we get the following: 
+\[
+\[
+\renewcommand{\arraystretch}{2.5}
+\begin{array}{|p{2cm}|p{2cm}||p{2cm}|p{2cm}|}
+\hline
+$\bigvee_{k=1}^{4} x_{11k}$ & $x_{122}$ & $\bigvee_{k=1}^{4} x_{13k}$ & $\bigvee_{k=1}^{4} x_{14k}$ \\
+\hline
+$\bigvee_{k=1}^{4} x_{21k}$ & $\bigvee_{k=1}^{4} x_{22k}$ & $x_{233}$ & $\bigvee_{k=1}^{4} x_{11k}$ \\
+\hline\hline
+$\bigvee_{k=1}^{4} x_{32k}$ & $ x_{323} $ & $\bigvee_{k=1}^{4} x_{33k}$ & $\bigvee_{k=1}^{4} x_{34k}$ \\
+\hline
+$\bigvee_{k=1}^{4} x_{41k}$ & $\bigvee_{k=1}^{4} x_{42k}$ & $x_{431}$ & $\bigvee_{k=1}^{4} x_{44k}$ \\
+\hline
+\end{array}
+\]
+
+Now Since each cell has at most 1 digit  we can represent in CNF form in the following way: \\ 
+
+\[
+\begin{aligned}
+\neg (x_{111} \land x_{112}) 
+&\equiv (\neg x_{111} \vee \neg x_{112}) 
+&\hfill \text{(by De Morgan’s law)}
+\end{aligned}
+\] 
+\clearpage
+So Applying For each possible values in first row first column we get the following 6 clauses: 
+$$ (\neg x_{111} \vee\neg x_{112}  ) $$ 
+$$ (\neg x_{111} \vee\neg x_{113}  ) $$  
+$$ (\neg x_{111} \vee\neg x_{114}  ) $$  
+$$ (\neg x_{112} \vee\neg x_{113}  ) $$  
+$$ (\neg x_{112} \vee\neg x_{114}  ) $$  
+$$ (\neg x_{113} \vee\neg x_{114}  ) $$  
+
+The above is repeatitive pattern for each cell of the sudoku for example in  cell 2 we will get the following 
+$$ (\neg x_{121} \vee \neg x_{122}  ) $$ 
+$$ (\neg x_{121} \vee \neg x_{123}  ) $$  
+$$ (\neg x_{121} \vee \neg x_{124}  ) $$  
+$$ (\neg x_{122} \vee \neg x_{123}  ) $$  
+$$ (\neg x_{122} \vee \neg x_{124}  ) $$  
+$$ (\neg x_{123} \vee \neg x_{124}  ) $$  and so forth for the remaining cells with total of $ 16 \times 6  = 96$ clauses
+
+The values in row and column of sudoku are unique i.e non repeatitive  so row and column can have 1 to 4 in a non repetitive pattern the same follows for the sub grid of the sudoku .
+\subsection{uniqueness of row and column} 
+\subsubsection{For row} 
+One digit on row must always appear only one in that row , to represent that 
+for uniqueness of digit "1" : 
+$$ \neg x_{111} \vee \neg x_{121}  $$
+$$ \neg x_{111} \vee  \neg x_{131}  $$
+$$ \neg x_{111} \vee \neg x_{141}  $$
+$$ \neg x_{121} \vee \neg x_{131} $$
+$$ \neg x_{121} \vee \neg x_{141}  $$
+$$ \neg x_{131} \vee \neg x_{141}  $$
+
+uniqueness of digit "2" :
+$$  \neg x_{112} \vee \neg x_{122}  $$
+$$ \neg x_{112} \vee  \neg x_{132}  $$
+$$ \neg x_{112} \vee \neg x_{142}  $$
+$$ \neg x_{122} \vee \neg x_{132} $$
+$$ \neg x_{122} \vee \neg x_{142}  $$
+$$ \neg x_{132} \vee \neg x_{142}  $$
+
+
+Similarly follows for 3 and 4 and for all four rows
+\subsubsection{For Column} 
+
+for uniqueness of digit "1"  in the first column , 
+for uniqueness of digit "1" : 
+$$ \neg x_{111} \vee \neg x_{211}  $$
+$$ \neg x_{111} \vee  \neg x_{311}  $$
+$$ \neg x_{111} \vee \neg x_{411}  $$
+$$ \neg x_{211} \vee \neg x_{311} $$
+$$ \neg x_{211} \vee \neg x_{411}  $$
+$$ \neg x_{311} \vee \neg x_{411}  $$
+
+uniqueness of digit "2" in the first column :
+$$  \neg x_{112} \vee \neg x_{212}  $$
+$$ \neg x_{112} \vee  \neg x_{312}  $$
+$$ \neg x_{112} \vee \neg x_{412}  $$
+$$ \neg x_{212} \vee \neg x_{312} $$
+$$ \neg x_{212} \vee \neg x_{412}  $$
+$$ \neg x_{312} \vee \neg x_{412}  $$
+
+and the same goes for digits '3' and digits  '4' and follows for the remaining column 
+i.e for each column there is $6 \times 4 = 24 $ statements, and for column as a whole there are 96 statements the same goes for no of clauses for rows.
+
+\subsubsection{for $3 \times 3$ sub grid} 
+In each subgrid there can only be one unique digits i.e there is no repetition of the digits in the subgrid. 
+So In terms of logic it can be written as : \\
+for example no repetition of digit '1' in the first subgrid of $2 \time 2$ 
+
+$$ \neg x_{111} \vee \neg x_{112} $$
+$$ \neg x_{111} \vee \neg x_{211} $$ 
+$$ \neg x_{111} \vee \neg x_{221} $$ 
+$$ \neg x_{121} \vee \neg x_{211} $$ 
+$$ \neg x_{121} \vee \neg x_{221} $$ 
+$$ \neg x_{211} \vee \neg x_{221} $$
+
+It follows similarly for all digits 2 to 4 in the similar pattern and for each of the subgrids.
+
+\section{Writing of the CNF as a whole} 
+The entire length of the CNF of the $ 4 \time 4 $ sudoku will be pretty long but is written by  AND-ing 
+of each of the above clauses to create a long boolean Satisfiaility problem . \\ 
+A snippet of the CNF form as a whole may be as follows : \\ 
+uniqueness of the digit in the first cell 
+\[(\neg x_{111} \vee\neg x_{112}  )  \land 
+ (\neg x_{111} \vee\neg x_{113}  )  \land
+ (\neg x_{111} \vee\neg x_{114}  )   \land
+ (\neg x_{112} \vee\neg x_{113}  )  \land
+ (\neg x_{112} \vee\neg x_{114}  )  \land 
+ (\neg x_{113} \vee\neg x_{114}  ) \land \] \[
+(\neg x_{121} \vee \neg x_{122}  )  \land 
+ (\neg x_{121} \vee \neg x_{123}  ) \land   
+ (\neg x_{121} \vee \neg x_{124}  )  \land 
+ (\neg x_{122} \vee \neg x_{123}  )\land 
+(\neg x_{122} \vee \neg x_{124}  )  \land 
+(\neg x_{123} \vee \neg x_{124}  )  \land 
+...
+  \]
+
+
+\printbibliography
+
+
+
+
+\end{document}

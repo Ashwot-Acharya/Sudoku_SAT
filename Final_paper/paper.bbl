@@ -1,0 +1,64 @@
+% $ biblatex auxiliary file $
+% $ biblatex bbl format version 3.3 $
+% Do not modify the above lines!
+%
+% This is an auxiliary file used by the 'biblatex' package.
+% This file may safely be deleted. It will be recreated by
+% biber as required.
+%
+\begingroup
+\makeatletter
+\@ifundefined{ver@biblatex.sty}
+  {\@latex@error
+     {Missing 'biblatex' package}
+     {The bibliography requires the 'biblatex' package.}
+      \aftergroup\endinput}
+  {}
+\endgroup
+
+
+\refsection{0}
+  \datalist[entry]{nyt/global//global/global/global}
+    \entry{HuthRyan2004}{book}{}{}
+      \name{author}{2}{}{%
+        {{un=0,uniquepart=base,hash=7ad042fb880cc734fb7b1ddec00d8e20}{%
+           family={Huth},
+           familyi={H\bibinitperiod},
+           given={Michael},
+           giveni={M\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=e28c26ad0e11fbb105ad60e981c90c91}{%
+           family={Ryan},
+           familyi={R\bibinitperiod},
+           given={Mark},
+           giveni={M\bibinitperiod},
+           givenun=0}}%
+      }
+      \list{location}{1}{%
+        {Cambridge}%
+      }
+      \list{publisher}{1}{%
+        {Cambridge University Press}%
+      }
+      \strng{namehash}{6ebd7fc21e939ffc1432d167b6cc6110}
+      \strng{fullhash}{6ebd7fc21e939ffc1432d167b6cc6110}
+      \strng{fullhashraw}{6ebd7fc21e939ffc1432d167b6cc6110}
+      \strng{bibnamehash}{6ebd7fc21e939ffc1432d167b6cc6110}
+      \strng{authorbibnamehash}{6ebd7fc21e939ffc1432d167b6cc6110}
+      \strng{authornamehash}{6ebd7fc21e939ffc1432d167b6cc6110}
+      \strng{authorfullhash}{6ebd7fc21e939ffc1432d167b6cc6110}
+      \strng{authorfullhashraw}{6ebd7fc21e939ffc1432d167b6cc6110}
+      \field{sortinit}{H}
+      \field{sortinithash}{23a3aa7c24e56cfa16945d55545109b5}
+      \field{extradatescope}{labelyear}
+      \field{labeldatesource}{}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{isbn}{978-0-521-54310-1}
+      \field{title}{Logic in Computer Science: Modelling and Reasoning about Systems}
+      \field{year}{2004}
+    \endentry
+  \enddatalist
+\endrefsection
+\endinput
+
