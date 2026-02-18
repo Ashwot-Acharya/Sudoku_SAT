@@ -6,3 +6,65 @@
   year      = {2004},
   isbn      = {978-0-521-54310-1}
 }
+
+
+@techreport{Colbourn1984,
+   abstract = {Completing partial Latin squares is shown to be NP-complete. Classical embedding techniques of Hall and Ryser underly a reduction from partitioning tripartite graphs into triangles. This in turn is shown to be NP-complete using a recent result of Holyer.},
+   author = {Charles J Colbourn},
+   title = {THE COMPLEXITY OF COMPLETING PARTIAL LATIN SQUARES}
+}
+
+@article{Yato2003,
+	key = {Yato2003},
+	type = {article},
+  
+	title = {Complexity and Completeness of Finding Another solution and its Application to Puzzles},
+	author = {Takayushi Yato},
+	
+	date_added = {2016-06-18},
+	date_published = {2003-02-11},
+	urls = {http://www-imai.is.s.u-tokyo.ac.jp/{\~{}}yato/data2/MasterThesis.pdf},
+	collections = {Puzzles,Basically computer science,About proof},
+	url = {http://www-imai.is.s.u-tokyo.ac.jp/{\~{}}yato/data2/MasterThesis.pdf},
+	urldate = {2016-06-18},
+	year = 2003
+}
+@techreport{SuSAT,
+   abstract = {Sudoku is a very simple and well-known puzzle that has achieved international popularity in the recent past. This paper addresses the problem of encoding Sudoku puzzles into conjunc-tive normal form (CNF), and subsequently solving them using polynomial-time propositional satisfiability (SAT) inference techniques. We introduce two straightforward SAT encodings for Sudoku: the minimal encoding and the extended encoding. The minimal encoding suffices to characterize Sudoku puzzles, whereas the extended encoding adds redundant clauses to the minimal encoding. Experimental results demonstrate that, for thousands of very hard puzzles, inference techniques struggle to solve these puzzles when using the minimal encoding. However, using the extended encoding, unit propagation is able to solve about half of our set of puzzles. Nonetheless, for some puzzles more sophisticated inference techniques are required.},
+   author = {Inês Lynce and Joël Ouaknine},
+   title = {Sudoku as a SAT Problem}
+}
+@techreport{Susat2,
+   abstract = {A Sudoku puzzle can be regarded as a propositional SAT problem. Various encodings are known for encoding Sudoku as a Con-junctive Normal Form(CNF) formula. Using these encodings for large Sudoku puzzles, however, generates too many clauses, which impede the performance of state-of-the-art SAT solvers. This paper presents an optimized CNF encoding in order to deal with large instances of Sudoku puzzles. We use fixed cells in Sudoku to remove obvious redundancies during the encoding phase. This results in reducing the number of clauses in the CNF encoding and a significant speedup in the SAT solving time.},
+   author = {Gihwon Kwon and Himanshu Jain},
+   title = {Optimized CNF Encoding for Sudoku Puzzles}
+}
+@techreport{Hoexum2020,
+   abstract = {In 2003 it was shown by Takayuki Yato that the sudoku puzzle is an NP-complete and ASP-complete problem. The proof provided in this paper involved a reduction from the Latin Square Completion problem, which is quite similar to a sudoku puzzle. However, as the paper was not solely focused on the sudoku puzzle, the formulation of the proof was short and not very intuitive. This paper will describe the method of proof in more detail and give more context, as to make it more understandable. Additionally, because there has not been much research done into other ways to prove the NP-and ASP-completeness of the sudoku puzzle, a different approach to the proof is explored. After this, the solving procedure is explained and the performances of different solving algorithms are compared to determine which is the most efficient method for solving a sudoku puzzle.},
+   author = {Eline Sophie Hoexum},
+   keywords = {ASP-completeness,NP-completeness,complexity,solving algorithm,sudoku puzzle},
+   title = {Revisiting the proof of the complexity of the sudoku puzzle},
+   year = {2020}
+}
+@techReport{Thesis2022,
+   author = {Bachelor Thesis and Sebastian Schlachter},
+   title = {Encoding Diverse Sudoku Variants as SAT Problems},
+   url = {https://ai.dmi.unibas.ch/},
+   year = {2022}
+}
+
+
+@misc{wikiSAT,
+   author = "Wikipedia",
+   title = "{Boolean satisfiability problem} --- {W}ikipedia{,} The Free Encyclopedia",
+   howpublished = {\url{http://en.wikipedia.org/w/index.php?title=Boolean\%20satisfiability\%20problem&oldid=1335700096}},
+ }
+
+
+ @article{Cook1971,
+  title={The complexity of theorem-proving procedures},
+  author={Cook, Stephen A.},
+  journal={Proceedings of the Third Annual ACM Symposium on Theory of Computing (STOC)},
+  pages={151--158},
+  year={1971}
+}

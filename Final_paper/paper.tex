@@ -3,8 +3,9 @@
 \usepackage{graphicx}
 \usepackage{geometry}
 \usepackage{braket}
-\usepackage[backend=biber,style=authoryear]{biblatex}
-\addbibresource{references.bib}
+\usepackage{natbib}   
+\usepackage{url}
+\bibliographystyle{plain}
 \geometry{a4paper, margin=1in}
 \usepackage{titlesec}
 \usepackage{tikz} 
@@ -25,7 +26,7 @@
     \begin{center}
       
         \Large\bfseries
-        SAT Based approach to solving sudoku\\[2cm]
+        SAT Based approach to solving Sudoku\\[2cm]
         
         \normalsize
         THIRD YEAR PROJECT REPORT\\[2ex]
@@ -46,12 +47,80 @@
         \vfill
     \end{center}
 \end{titlepage}
-\section{CNF Conversion for  $  4 \times 4 $  sudoku } 
+\tableofcontents
+\newpage
+\section*{Abstract}
+Sudoku is a well-known puzzle whose generalized version can be formulated as a decision and search problem over an $n^2 \times n^2$ grid. From a computational perspective, generalized Sudoku is NP-complete, and finding a valid completion corresponds to solving a function problem in FNP. This project presents a Boolean satisfiability (SAT) based approach for solving generalized Sudoku instances by reducing the puzzle to a propositional formula in Conjunctive Normal Form (CNF).
 
-\subsection{What is CNF?}
-A boolean formula is said to be in a conjective normal form if it is a conjuction of clauses , where each clause is a disjunction of literals.\cite{HuthRyan2004}
+We formally encode the structural constraints of Sudoku—definedness and uniqueness across cells, rows, columns, and sub-grids—into Boolean variables of the form $x_{i,j,k}$, representing the assignment of digit $k$ to cell $(i,j)$. The resulting constraints are translated into CNF and expressed in DIMACS format, enabling compatibility with standard SAT solvers. We adopt an extended encoding strategy that introduces certain redundant clauses to improve propagation efficiency and conflict detection in modern Conflict-Driven Clause Learning (CDCL) solvers.
 
-To show how a sudoku is converted to a Conjective Normal Form (CNF) let us consider a basic $4 \times 4 $ sudoku like the following: 
+The implementation consists of generating CNF files using Python, mapping logical variables to integer representations, and solving the instances using both existing SAT solvers and a basic SAT solver implemented in C. We also compare the SAT-based method with a classical backtracking approach to evaluate performance differences. Experimental observations demonstrate that SAT-based techniques provide a systematic and scalable framework for solving larger generalized Sudoku instances, highlighting the practical strength of reductions to SAT for combinatorial search problems.\newpage
+\section{Introduction}
+\subsection{Sudoku}
+A puzzle in which a $n^2 \times n^2$ grid consisting of $n$ "$n \times n$" sub-grids is to be filled with numbers from $1$ \text{to} $n^2$ so that every row, column, and region contains only one instance of each number, $n \geq 1$.
+In a sudoku puzzle, few cells are already filled, those are called cues.
+The \textbf{Sudoku Problem}  is to determine whether there exist a completion such that the forementioned conditions are satisfied.
+
+
+The most common format for sudoku is of $9  \times 9$ grid. In this project we worked upon larger variants. For arbitary positve integer n, we call it \textbf{Generalized Sudoku}.
+
+
+\subsubsection{Complexity of Generalized Sudoku Problem}
+The Partial Latin Square Completion problem was shown to be NP-complete \cite{Colbourn1984}. Yato and Seta \cite{Yato2003} demonstrated that Partial Latin Square can be parsimoniously reduced to Number Place (generalized Sudoku), thereby establishing the ASP-completeness of Sudoku, which captures the computational hardness of finding another solution. Because ASP-completeness implies NP-completeness, generalized Sudoku is NP-complete.
+Since Our Project also consists of finding a solution, we also consider  the FNP (as defined in \cite{Yato2003}) version of the problem.
+
+
+\subsection{The Boolean Satisfiaility Problem}
+In logic and computer science, the Boolean satisfiability problem (sometimes called propositional satisfiability problem and abbreviated SATISFIABILITY, SAT or B-SAT) asks whether there exists an interpretation that satisfies a given Boolean formula. In other words, it asks whether the formula's variables can be consistently replaced by the values TRUE or FALSE to make the formula evaluate to TRUE. If this is the case, the formula is called satisfiable, else unsatisfiable. \cite{wikiSAT}
+We refer it as SAT.\\
+$ a \vee \neg b $ is SATISFIABLE with $a = 1 $ and $b = 0$.\\ 
+$a \wedge \neg a $ is UNSATISFIABLE .
+
+
+
+
+\subsubsection{Complexity of SAT}
+SAT is NP complete. In fact, it was the first problem to be known as such. As proved by Stephen Cook at the University of Toronto in 1971 and independently by Leonid Levin at the Russian Academy of Sciences in 1973. \cite{wikiSAT}.
+This project deals with finding out the assignments if they exist,  which for the general case is in FNP.
+
+
+
+
+
+\subsubsection{SAT Solvers}
+SAT Solvers are computer programs that check if there exist some assignment of boolean variables in the given problem such that it evaluates to True. SAT solvers also provide us the assignments. Therefore dealing with the search if satisfiable.
+
+
+
+\subsection{Justification for SAT approach}
+Since generalized Sudoku is NP-complete (and thus belongs to NP), it can be reduced in polynomial time to any other NP-complete problem, such as Boolean satisfiability (SAT).
+Note that forementioned complexity is for when n grows without bound, but in practice we have a finite grid. 
+This reduction provides a formal justification for using SAT solvers to find Sudoku solutions: by converting a Sudoku instance into an equivalent SAT instance, we can leverage modern SAT-solving algorithms to efficiently compute a valid completed grid. This approach is theoretically sound, because solving the SAT instance is guaranteed to yield a solution to the original Sudoku problem whenever one exists.
+
+
+
+
+
+
+\section{Mathematical Formulation}
+\subsection{Conjuctive Normal Form}
+A boolean formula is said to be in a conjective normal form if it is a conjuction of clauses , where each clause is a disjunction of literals.\cite{HuthRyan2004}\\ 
+The following expression is in CNF $$( (x_1 \vee x_2) \wedge (x_2 \vee \neg x_3)  )$$\\ 
+Every boolean expression can be converted to CNF.
+
+
+
+
+
+
+
+
+\subsection{Representation of Sudoku As Boolean Expression (CNF)}
+Our goal is to represent the constraints of the puzzle as boolean expression and obtain a formula. For this we take the naive approach i.e each cell is visited and all constraint are enforced for every possible digit.
+
+
+\begin{figure}[h]
+  
 
 \[
 \renewcommand{\arraystretch}{2.5}
@@ -67,144 +136,382 @@ To show how a sudoku is converted to a Conjective Normal Form (CNF) let us consi
 \hline
 \end{array}
 \]
-\subsection{Basic representation} 
-Each cell in a $4 \times 4$ sudoku has a total of 4 different possible values 
-for the ease of representation let us consider the following : \\
-$i$:  row number  \\
-$j$: column number \\ 
-$k$: possible input value  \\  
-$ i, j , k \in \{ 1 , 2 , 3, 4 \} $ \\ 
-And hence any cell  $x $ can be represented as : 
-$ x_{ijk} $
+\caption{$4 \times 4$ Sudoku}
+\end{figure}
 
-\subsection{Clause for each cells} 
-Since there only exist 1 input in each cell it can be written in terms of logic as : \\ 
-\[ ( x_{ij1} \vee x_{ij2} \vee x_{ij3} \vee x_{ij4}) \]
-so for first cell we can represent the logic as : 
-   $ (x_{111} \vee x_{112} \vee x_{113} \vee x_{114} ) $ \\ 
-rewriting for each cell we get the following: 
+
+Each cell in a $n^2 \times n^2$ sudoku has a total of $n^2$ different possible digit it can contain.
+Suppose, \\
+$i$:  row index  \\
+$j$: column index \\ 
+$k$: possible digit  \\  
+$ 1 \leq i, j , k  \leq $ \\ 
+Then the variable $ x_{ijk} $ is true whenever the cell (1,j) contains the digit k.
+
+
+\subsubsection{Definedness}
+Every cell must contain atleast one digit. Every row, column and sub-grid must contain digits from 1 to $n^2$. This property is called \textbf{Definedness}.\\
+
+Each cell contains atleast one digit
+
 \[
-\[
-\renewcommand{\arraystretch}{2.5}
-\begin{array}{|p{2cm}|p{2cm}||p{2cm}|p{2cm}|}
-\hline
-$\bigvee_{k=1}^{4} x_{11k}$ & $x_{122}$ & $\bigvee_{k=1}^{4} x_{13k}$ & $\bigvee_{k=1}^{4} x_{14k}$ \\
-\hline
-$\bigvee_{k=1}^{4} x_{21k}$ & $\bigvee_{k=1}^{4} x_{22k}$ & $x_{233}$ & $\bigvee_{k=1}^{4} x_{11k}$ \\
-\hline\hline
-$\bigvee_{k=1}^{4} x_{32k}$ & $ x_{323} $ & $\bigvee_{k=1}^{4} x_{33k}$ & $\bigvee_{k=1}^{4} x_{34k}$ \\
-\hline
-$\bigvee_{k=1}^{4} x_{41k}$ & $\bigvee_{k=1}^{4} x_{42k}$ & $x_{431}$ & $\bigvee_{k=1}^{4} x_{44k}$ \\
-\hline
-\end{array}
+\textbf{$Cell_d$} =
+\bigwedge_{i=1}^{n^2}
+\bigwedge_{j=1}^{n^2}
+\left(
+\bigvee_{k=1}^{n^2} x_{ijk}
+\right)
 \]
 
-Now Since each cell has at most 1 digit  we can represent in CNF form in the following way: \\ 
+
+
+Each value appears atleast once in each row  
+\textbf{For Row}
+\[
+\textbf{$Row_d$} =
+\bigwedge_{i=1}^{n^2}
+\bigwedge_{k=1}^{n^2}
+\left(
+\bigvee_{j=1}^{n^2} x_{ijk}
+\right)
+\]
+
+
+
+Each value appears atleast once in each column  
+\[
+\textbf{$Col_d$} =
+\bigwedge_{j=1}^{n^2}
+\bigwedge_{k=1}^{n^2}
+\left(
+\bigvee_{i=1}^{n^2} x_{ijk}
+\right)
+\]
+
+Each value appears atleast once in each sub-grid  
 
 \[
-\begin{aligned}
-\neg (x_{111} \land x_{112}) 
-&\equiv (\neg x_{111} \vee \neg x_{112}) 
-&\hfill \text{(by De Morgan’s law)}
-\end{aligned}
-\] 
-\clearpage
-So Applying For each possible values in first row first column we get the following 6 clauses: 
-$$ (\neg x_{111} \vee\neg x_{112}  ) $$ 
-$$ (\neg x_{111} \vee\neg x_{113}  ) $$  
-$$ (\neg x_{111} \vee\neg x_{114}  ) $$  
-$$ (\neg x_{112} \vee\neg x_{113}  ) $$  
-$$ (\neg x_{112} \vee\neg x_{114}  ) $$  
-$$ (\neg x_{113} \vee\neg x_{114}  ) $$  
-
-The above is repeatitive pattern for each cell of the sudoku for example in  cell 2 we will get the following 
-$$ (\neg x_{121} \vee \neg x_{122}  ) $$ 
-$$ (\neg x_{121} \vee \neg x_{123}  ) $$  
-$$ (\neg x_{121} \vee \neg x_{124}  ) $$  
-$$ (\neg x_{122} \vee \neg x_{123}  ) $$  
-$$ (\neg x_{122} \vee \neg x_{124}  ) $$  
-$$ (\neg x_{123} \vee \neg x_{124}  ) $$  and so forth for the remaining cells with total of $ 16 \times 6  = 96$ clauses
-
-The values in row and column of sudoku are unique i.e non repeatitive  so row and column can have 1 to 4 in a non repetitive pattern the same follows for the sub grid of the sudoku .
-\subsection{uniqueness of row and column} 
-\subsubsection{For row} 
-One digit on row must always appear only one in that row , to represent that 
-for uniqueness of digit "1" : 
-$$ \neg x_{111} \vee \neg x_{121}  $$
-$$ \neg x_{111} \vee  \neg x_{131}  $$
-$$ \neg x_{111} \vee \neg x_{141}  $$
-$$ \neg x_{121} \vee \neg x_{131} $$
-$$ \neg x_{121} \vee \neg x_{141}  $$
-$$ \neg x_{131} \vee \neg x_{141}  $$
-
-uniqueness of digit "2" :
-$$  \neg x_{112} \vee \neg x_{122}  $$
-$$ \neg x_{112} \vee  \neg x_{132}  $$
-$$ \neg x_{112} \vee \neg x_{142}  $$
-$$ \neg x_{122} \vee \neg x_{132} $$
-$$ \neg x_{122} \vee \neg x_{142}  $$
-$$ \neg x_{132} \vee \neg x_{142}  $$
+\textbf{$Subgrid_d$} =
+\bigwedge_{a=0}^{n-1}
+\bigwedge_{b=0}^{n-1}
+\bigwedge_{k=1}^{n^2}
+\left(
+\bigvee_{i=1}^{n}
+\bigvee_{j=1}^{n}
+x_{an+i,\; bn+j,\; k}
+\right)
+\]
 
 
-Similarly follows for 3 and 4 and for all four rows
-\subsubsection{For Column} 
-
-for uniqueness of digit "1"  in the first column , 
-for uniqueness of digit "1" : 
-$$ \neg x_{111} \vee \neg x_{211}  $$
-$$ \neg x_{111} \vee  \neg x_{311}  $$
-$$ \neg x_{111} \vee \neg x_{411}  $$
-$$ \neg x_{211} \vee \neg x_{311} $$
-$$ \neg x_{211} \vee \neg x_{411}  $$
-$$ \neg x_{311} \vee \neg x_{411}  $$
-
-uniqueness of digit "2" in the first column :
-$$  \neg x_{112} \vee \neg x_{212}  $$
-$$ \neg x_{112} \vee  \neg x_{312}  $$
-$$ \neg x_{112} \vee \neg x_{412}  $$
-$$ \neg x_{212} \vee \neg x_{312} $$
-$$ \neg x_{212} \vee \neg x_{412}  $$
-$$ \neg x_{312} \vee \neg x_{412}  $$
-
-and the same goes for digits '3' and digits  '4' and follows for the remaining column 
-i.e for each column there is $6 \times 4 = 24 $ statements, and for column as a whole there are 96 statements the same goes for no of clauses for rows.
-
-\subsubsection{for $3 \times 3$ sub grid} 
-In each subgrid there can only be one unique digits i.e there is no repetition of the digits in the subgrid. 
-So In terms of logic it can be written as : \\
-for example no repetition of digit '1' in the first subgrid of $2 \time 2$ 
-
-$$ \neg x_{111} \vee \neg x_{112} $$
-$$ \neg x_{111} \vee \neg x_{211} $$ 
-$$ \neg x_{111} \vee \neg x_{221} $$ 
-$$ \neg x_{121} \vee \neg x_{211} $$ 
-$$ \neg x_{121} \vee \neg x_{221} $$ 
-$$ \neg x_{211} \vee \neg x_{221} $$
-
-It follows similarly for all digits 2 to 4 in the similar pattern and for each of the subgrids.
-
-\section{Writing of the CNF as a whole} 
-The entire length of the CNF of the $ 4 \time 4 $ sudoku will be pretty long but is written by  AND-ing 
-of each of the above clauses to create a long boolean Satisfiaility problem . \\ 
-A snippet of the CNF form as a whole may be as follows : \\ 
-uniqueness of the digit in the first cell 
-\[(\neg x_{111} \vee\neg x_{112}  )  \land 
- (\neg x_{111} \vee\neg x_{113}  )  \land
- (\neg x_{111} \vee\neg x_{114}  )   \land
- (\neg x_{112} \vee\neg x_{113}  )  \land
- (\neg x_{112} \vee\neg x_{114}  )  \land 
- (\neg x_{113} \vee\neg x_{114}  ) \land \] \[
-(\neg x_{121} \vee \neg x_{122}  )  \land 
- (\neg x_{121} \vee \neg x_{123}  ) \land   
- (\neg x_{121} \vee \neg x_{124}  )  \land 
- (\neg x_{122} \vee \neg x_{123}  )\land 
-(\neg x_{122} \vee \neg x_{124}  )  \land 
-(\neg x_{123} \vee \neg x_{124}  )  \land 
-...
-  \]
 
 
-\printbibliography
+
+\subsubsection{Uniqueness} 
+
+A cell can contain atmost one digit and different cells in any row/column/sub-grid cannot attain same value, these are the \textbf{Uniqueness} Constraints.
+
+
+Each cell contains at most one value:
+
+\[
+\textbf{$Cell_u$} =
+\bigwedge_{i=1}^{n^2}
+\bigwedge_{j=1}^{n^2}
+\bigwedge_{1 \le k_1 < k_2 \le n^2}
+(\neg x_{i,j,k_1} \lor \neg x_{i,j,k_2})
+\]
+
+
+Each value appears at most once in every row:
+
+\[
+\textbf{$Row_u$} =
+\bigwedge_{i=1}^{n^2}
+\bigwedge_{k=1}^{n^2}
+\bigwedge_{1 \le j_1 < j_2 \le n^2}
+(\neg x_{i,j_1,k} \lor \neg x_{i,j_2,k})
+\]
+
+
+Each value appears at most once in every column:
+
+\[
+\textbf{$Col_u$} =
+\bigwedge_{j=1}^{n^2}
+\bigwedge_{k=1}^{n^2}
+\bigwedge_{1 \le i_1 < i_2 \le n^2}
+(\neg x_{i_1,j,k} \lor \neg x_{i_2,j,k})
+\]
+
+Each value appears at most once in every subgrid:
+
+\[
+\textbf{$Subgrid_u$} =
+\bigwedge_{a=0}^{n-1}
+\bigwedge_{b=0}^{n-1}
+\bigwedge_{k=1}^{n^2}
+\bigwedge_{\substack{(i_1,j_1),(i_2,j_2) \\ 1 \le i_1,j_1,i_2,j_2 \le n \\ (i_1,j_1) < (i_2,j_2)}}
+(\neg x_{an+i_1,\; bn+j_1,\; k}
+ \lor
+ \neg x_{an+i_2,\; bn+j_2,\; k})
+\]
+
+\subsubsection*{For Cues}
+
+If the puzzle contains a fixed entry $(i,j)=k$, it is encoded as a unit clause:
+
+\[
+\textbf{Cues} =
+\bigwedge_{(i,j,k)\in G} x_{i,j,k}
+\]
+
+
+
+
+\subsubsection*{Example}
+
+For given $4 \times 4$ Sudoku in Figure 1, we introduce Boolean variables
+
+\[
+x_{i,j,k}
+\]
+
+with $i,j,k \in \{1,2,3,4\}$, where
+
+\[
+x_{i,j,k} = 1 \quad \text{iff cell } (i,j) \text{ contains number } k.
+\]
+
+Thus, we obtain $4^3 = 64$ Boolean variables.
+
+
+Each cell must contain at least one number:
+
+\[
+\bigvee_{k=1}^{4} x_{i,j,k}
+\quad \text{for all } i,j.
+\]
+
+ for cell $(1,1)$:
+
+\[
+x_{1,1,1} \lor x_{1,1,2} \lor x_{1,1,3} \lor x_{1,1,4}.
+\]
+
+Each cell contains at most one number:
+
+\[
+\neg x_{i,j,k} \lor \neg x_{i,j,\ell}
+\quad \text{for all } k \neq \ell.
+\]
+
+
+
+\[
+\neg x_{1,1,1} \lor \neg x_{1,1,2}.
+\]
+
+
+Each number appears exactly once in every row.
+
+At least once:
+
+\[
+\bigvee_{j=1}^{4} x_{i,j,k}
+\quad \text{for all } i,k.
+\]
+
+for number 1 in row 1:
+
+\[
+x_{1,1,1} \lor x_{1,2,1} \lor x_{1,3,1} \lor x_{1,4,1}.
+\]
+
+At most once:
+
+\[
+\neg x_{i,j,k} \lor \neg x_{i,\ell,k}
+\quad \text{for } j \neq \ell.
+\]
+
+
+Each number appears exactly once in every column.
+
+At least once:
+
+\[
+\bigvee_{i=1}^{4} x_{i,j,k}
+\quad \text{for all } j,k.
+\]
+
+for number 2 in column 2:
+
+\[
+x_{1,2,2} \lor x_{2,2,2} \lor x_{3,2,2} \lor x_{4,2,2}.
+\]
+
+At most once:
+
+\[
+\neg x_{i,j,k} \lor \neg x_{\ell,j,k}
+\quad \text{for } i \neq \ell.
+\]
+
+
+Each number appears exactly once in every $2 \times 2$ subgrid.
+
+For example, in the upper-left block (rows 1--2, columns 1--2):
+
+At least once (number 1):
+
+\[
+x_{1,1,1} \lor x_{1,2,1} \lor x_{2,1,1} \lor x_{2,2,1}.
+\]
+
+At most once:
+
+\[
+\neg x_{1,1,1} \lor \neg x_{2,2,1},
+\]
+
+and similarly for all other pairs.
+
+\subsection*{Encoding the Given Puzzle}
+
+The fixed entries of the puzzle are encoded as unit clauses.
+
+From the grid:
+
+\[
+(1,2)=2 \quad \Rightarrow \quad x_{1,2,2}
+\]
+
+\[
+(2,3)=3 \quad \Rightarrow \quad x_{2,3,3}
+\]
+
+\[
+(3,2)=3 \quad \Rightarrow \quad x_{3,2,3}
+\]
+
+\[
+(4,3)=1 \quad \Rightarrow \quad x_{4,3,1}
+\]
+
+Each of these is added as a unit clause to the CNF formula.
+
+
+
+
+
+
+
+
+
+
+
+
+
+\subsubsection{Final Formula}
+
+
+The complete CNF encoding is:
+
+\[
+\Phi =
+\textbf{$Cell_d$} \land \textbf{$Cell_u$}
+\land \textbf{$Row_d$} \land \textbf{$Row_u$}
+\land \textbf{$Col_d$} \land \textbf{$Col_u$}
+\land \textbf{$Subgrid_d$} \land \textbf{$Subgrid_u$}
+\land \textbf{$Cues$}.
+\]
+
+
+
+\subsection{Encoding}
+
+For the final formula we choose the extended encoding (See \cite{SuSAT}) where some clauses are redundant, the tests by \cite{SuSAT} show that this is the fastest encoding for solving sudoku puzzles. Furthermore, making the formula more explicit assists CDCL due to conflicts being detected earlier.
+The other possible encodings which were compared in those tests are as follows:
+
+   \[
+\Phi =
+\textbf{$Cell_d$} 
+\land \textbf{$Row_u$}
+\land  \textbf{$Col_u$}
+\land  \textbf{$Subgrid_u$}
+\land \textbf{$Cues$}.
+\]
+ \[
+\Phi =
+\textbf{$Cell_d$} \land
+\textbf{$Cell_u$} 
+\land \textbf{$Row_u$}
+\land  \textbf{$Col_u$}
+\land  \textbf{$Subgrid_u$}
+\land \textbf{$Cues$}.
+\]
+
+
+All three formulas are Equisatisfiable.
+
+
+
+\section{Implementation}
+
+\subsection{Computer Representation}
+
+The sudoku will be first represented as a conventional array. %need to write it properly
+With the decided encoding, the problem will be converted to CNF, for which we use \textbf{DIMACS} format.
+\subsection{DIMACS CNF}
+It is a textual representation of a formula in CNF form, where each line ending with  0 represents a clause. Each literal and its negation is represented by a positive and negative integer respectively.
+A DIMACS CNF file starts with a header p cnf (variables) (clauses) where (variables) and (clauses) are replaced with number of variables and clauses respectively. Any line beginning with c is a comment.
+The formula \[( x \vee y \vee \neg z ) \land (\neg x \vee \neg y )\] in DIMACS format would be 
+\begin{verbatim}
+  p cnf 3 2
+  1 2 3 0
+  -1 -2 0
+\end{verbatim}
+All encoded Sudoku Problem is written in DIMACS and stored as a .cnf file.
+
+
+\subsection{Mapping variables to integers}
+
+
+\subsection{Conversion to DIMACS using python}
+
+
+
+
+\subsection{Solution Using Existing SAT solvers and PySAT}
+
+
+
+\subsection{Building a SAT solver in C}
+
+
+\subsubsection{CDCL }
+
+
+
+\subsubsection{Implementation of CDCL}
+
+
+
+
+\section{Comparison with Backtracking}
+
+
+
+Graphs and stuffs go here
+
+
+
+
+
+
+
+
+\bibliography{references}
 
 
 
