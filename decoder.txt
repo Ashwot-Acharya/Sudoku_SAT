@@ -1,0 +1,69 @@
+static void decode_and_print_sudoku(void) {
+    if (N <= 0) {
+        printf("(Sudoku decode skipped: no 'c SIZE N' comment found in CNF)\n");
+        return;
+    }
+
+    /* ── allocate grid ──────────────────────────────────────────────────── */
+    int **grid = malloc((size_t)N * sizeof(int *));
+    for (int i = 0; i < N; i++)
+        grid[i] = calloc((size_t)N, sizeof(int));
+
+    /* ── stamp fixed (pre-assigned) cells ───────────────────────────────── */
+    for (int i = 0; i < fixed_count; i++) {
+        int r = fixed_flat[i*3],  c = fixed_flat[i*3+1],  v = fixed_flat[i*3+2];
+        if (r >= 1 && r <= N && c >= 1 && c <= N)
+            grid[r-1][c-1] = v;
+    }
+
+    /* ── stamp free variables that were assigned TRUE ────────────────────── */
+    int conflicts = 0;
+    for (int var = 1; var <= solver.num_vars; var++) {
+        if (solver.assignment[var] != 1) continue;
+        if (var >= var_info_cap)          continue;
+
+        VarEntry *e = &var_info[var];
+        if (e->r < 1 || e->r > N || e->c < 1 || e->c > N || e->v < 1) continue;
+
+        int existing = grid[e->r - 1][e->c - 1];
+        if (existing != 0 && existing != e->v) {
+            fprintf(stderr,
+                "DECODE CONFLICT cell(%d,%d): existing=%d new=%d var=%d\n",
+                e->r, e->c, existing, e->v, var);
+            conflicts++;
+        }
+        grid[e->r - 1][e->c - 1] = e->v;
+    }
+    if (conflicts)
+        fprintf(stderr, "WARNING: %d decode conflicts detected.\n", conflicts);
+
+    /* ── pretty-print ───────────────────────────────────────────────────── */
+    printf("\nSudoku solution (%dx%d):\n\n", N, N);
+
+    /* box width = smallest integer whose square >= N */
+    int base = 1;
+    while (base * base < N) base++;
+
+    for (int r = 0; r < N; r++) {
+        /* horizontal separator between box rows */
+        if (r > 0 && r % base == 0) {
+            int dashes = N * 2 + (N / base - 1) * 2;
+            for (int i = 0; i < dashes; i++) putchar('-');
+            putchar('\n');
+        }
+        for (int c = 0; c < N; c++) {
+            /* vertical separator between box columns */
+            if (c > 0 && c % base == 0) printf("| ");
+
+            int val = grid[r][c];
+            if      (val == 0)  printf(". ");
+            else if (val <= 9)  printf("%d ", val);
+            else                printf("%c ", 'A' + val - 10);
+        }
+        putchar('\n');
+    }
+
+    /* ── cleanup ────────────────────────────────────────────────────────── */
+    for (int i = 0; i < N; i++) free(grid[i]);
+    free(grid);
+}

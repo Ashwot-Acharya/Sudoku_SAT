@@ -1,4 +1,4 @@
 SIZE 36
-SOLVE_TIME_SEC >600  (timeout at 10 min)
+SOLVE_TIME_SEC >300  (timeout at 5 min)
 METHOD Optimized_Backtracking
 STATUS TIMEOUT

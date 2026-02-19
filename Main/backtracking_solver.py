@@ -1,7 +1,7 @@
 """
 backtracking_solver.py
 Optimized backtracking solver with MRV + degree heuristic + forward checking.
-Supports a timeout (default 600s = 10 min). If timeout is hit, returns
+Supports a timeout (default 300 = 5 ). If timeout is hit, returns
 TIMEOUT_SENTINEL so the benchmark can mark it as ">10min".
 """
 
@@ -16,8 +16,8 @@ PUZZLES_DIR = os.path.join(SCRIPT_DIR, "..", "Puzzles")
 SOL_DIR     = os.path.join(SCRIPT_DIR, "..", "Output", "Sol")
 os.makedirs(SOL_DIR, exist_ok=True)
 
-TIMEOUT_SECONDS  = 10 * 60
-TIMEOUT_SENTINEL = float("inf")   # used in benchmark to mean ">10 min"
+TIMEOUT_SECONDS  = 5 * 60
+TIMEOUT_SENTINEL = float("inf")   # used in benchmark to mean ">5 min"
 
 
 # ───────────────────────────────────────────────────────────────
@@ -51,7 +51,7 @@ def save_solution(grid, n, basename, elapsed, timed_out=False):
     out_path = os.path.join(SOL_DIR, basename + "_BT_solved.txt")
     with open(out_path, "w") as f:
         f.write(f"SIZE {n}\n")
-        f.write("SOLVE_TIME_SEC >600  (timeout at 10 min)\n" if timed_out
+        f.write("SOLVE_TIME_SEC >300  (timeout at 5 min)\n" if timed_out
                 else f"SOLVE_TIME_SEC {elapsed:.6f}\n")
         f.write("METHOD Optimized_Backtracking\n")
         f.write("STATUS TIMEOUT\n" if timed_out else "STATUS SOLVED\n")
@@ -147,7 +147,7 @@ def solve_recursive(grid, domains, peers):
 def solve_puzzle(filepath, verbose=True, timeout=TIMEOUT_SECONDS):
     """
     Returns (sol_path | None, elapsed_seconds).
-    elapsed == TIMEOUT_SENTINEL (inf) when the 10-min wall is hit.
+    elapsed == TIMEOUT_SENTINEL (inf) when the-min wall is hit.
     """
     basename  = os.path.splitext(os.path.basename(filepath))[0]
     n, puzzle = read_puzzle(filepath)

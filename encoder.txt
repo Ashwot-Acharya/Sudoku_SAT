@@ -1,0 +1,149 @@
+def encode(n, puzzle):
+    """
+    Produce clauses using the optimised encoding φ' from Kwon & Jain.
+
+    Returns (clauses, num_vars, var_map, V0_list) where:
+      - clauses   : list of lists of ints  (DIMACS literals)
+      - num_vars  : number of free variables
+      - var_map   : dict (r,c,v) -> dimacs_var
+      - V0_list   : sorted list of (r,c,v) triples in V0  (for MAP comments)
+    """
+    box = int(math.sqrt(n))
+
+    # ── partition variables ────────────────────────────────────────────────────
+    # V+  : variables known TRUE  (fixed cell value)
+    # V-  : variables known FALSE (same cell/row/col/block as a V+ variable)
+    # V0  : unknown — what the SAT solver must decide
+
+    V_plus  = set()
+    V_minus = set()
+
+    fixed = {}
+    for r in range(1, n + 1):
+        for c in range(1, n + 1):
+            v = puzzle[r - 1][c - 1]
+            if v != 0:
+                fixed[(r, c)] = v
+                V_plus.add((r, c, v))
+
+    def luc(i):
+        return ((i - 1) // box) * box + 1
+
+    for (r, c, v) in list(V_plus):
+        for v2 in range(1, n + 1):
+            if v2 != v:
+                V_minus.add((r, c, v2))
+        for c2 in range(1, n + 1):
+            if c2 != c:
+                V_minus.add((r, c2, v))
+        for r2 in range(1, n + 1):
+            if r2 != r:
+                V_minus.add((r2, c, v))
+        br, bc = luc(r), luc(c)
+        for r2 in range(br, br + box):
+            for c2 in range(bc, bc + box):
+                if (r2, c2) != (r, c):
+                    V_minus.add((r2, c2, v))
+
+    V0 = set()
+    for r in range(1, n + 1):
+        for c in range(1, n + 1):
+            for v in range(1, n + 1):
+                triple = (r, c, v)
+                if triple not in V_plus and triple not in V_minus:
+                    V0.add(triple)
+
+    # Compact mapping: (r,c,v) -> 1-indexed DIMACS variable
+    V0_list  = sorted(V0)
+    var_map  = {triple: idx + 1 for idx, triple in enumerate(V0_list)}
+    num_vars = len(var_map)
+
+    def lit(r, c, v, neg=False):
+        """
+        Return the DIMACS literal (int), or sentinel string:
+          "TRUE"  -> clause is satisfied (skip whole clause)
+          "FALSE" -> literal is false    (skip this literal only)
+        """
+        if (r, c, v) in V_plus:
+            return "FALSE" if neg else "TRUE"
+        if (r, c, v) in V_minus:
+            return "TRUE" if neg else "FALSE"
+        idx = var_map[(r, c, v)]
+        return -idx if neg else idx
+
+    clauses = []
+
+    def add_clause(literals):
+        resolved = []
+        for (r, c, v, neg) in literals:
+            l = lit(r, c, v, neg)
+            if l == "TRUE":
+                return
+            if l == "FALSE":
+                continue
+            resolved.append(l)
+        if resolved:
+            clauses.append(resolved)
+
+    # ── Cell definedness ───────────────────────────────────────────────────────
+    for r in range(1, n + 1):
+        for c in range(1, n + 1):
+            add_clause([(r, c, v, False) for v in range(1, n + 1)])
+
+    # ── Cell uniqueness ────────────────────────────────────────────────────────
+    for r in range(1, n + 1):
+        for c in range(1, n + 1):
+            for vi in range(1, n):
+                for vj in range(vi + 1, n + 1):
+                    add_clause([(r, c, vi, True), (r, c, vj, True)])
+
+    # ── Row definedness ────────────────────────────────────────────────────────
+    for r in range(1, n + 1):
+        for v in range(1, n + 1):
+            add_clause([(r, c, v, False) for c in range(1, n + 1)])
+
+    # ── Row uniqueness ─────────────────────────────────────────────────────────
+    for r in range(1, n + 1):
+        for v in range(1, n + 1):
+            for ci in range(1, n):
+                for cj in range(ci + 1, n + 1):
+                    add_clause([(r, ci, v, True), (r, cj, v, True)])
+
+    # ── Col definedness ────────────────────────────────────────────────────────
+    for c in range(1, n + 1):
+        for v in range(1, n + 1):
+            add_clause([(r, c, v, False) for r in range(1, n + 1)])
+
+    # ── Col uniqueness ─────────────────────────────────────────────────────────
+    for c in range(1, n + 1):
+        for v in range(1, n + 1):
+            for ri in range(1, n):
+                for rj in range(ri + 1, n + 1):
+                    add_clause([(ri, c, v, True), (rj, c, v, True)])
+
+    # ── Block definedness ──────────────────────────────────────────────────────
+    for roffs in range(0, n, box):
+        for coffs in range(0, n, box):
+            for v in range(1, n + 1):
+                add_clause([
+                    (roffs + dr, coffs + dc, v, False)
+                    for dr in range(1, box + 1)
+                    for dc in range(1, box + 1)
+                ])
+
+    # ── Block uniqueness ───────────────────────────────────────────────────────
+    for roffs in range(0, n, box):
+        for coffs in range(0, n, box):
+            for v in range(1, n + 1):
+                cells = [
+                    (roffs + dr, coffs + dc)
+                    for dr in range(1, box + 1)
+                    for dc in range(1, box + 1)
+                ]
+                for i in range(len(cells)):
+                    for j in range(i + 1, len(cells)):
+                        r1, c1 = cells[i]
+                        r2, c2 = cells[j]
+                        add_clause([(r1, c1, v, True), (r2, c2, v, True)])
+
+    return clauses, num_vars, var_map, V0_list

@@ -1,8 +1,19 @@
-\documentclass[12pt]{beamer}
+\documentclass[aspectratio=169]{beamer}
 
 % Use metropolis but disable font theme (avoids Fira font error)
 \usetheme[numbering=fraction]{metropolis}
 \usefonttheme{professionalfonts}
+\usepackage{listings}
+\lstset{
+  langiage=Python
+  breaklines=true,
+  basicstyle=\ttfamily\small,
+  keywordstyle=\color{blue},
+  commentstyle=\color{gray},
+  showstringspaces=fals
+  columns=fullflexible
+}
+
 
 \usepackage{booktabs}
 \usepackage{xcolor}
@@ -80,22 +91,48 @@ Modern solvers (Glucose, MiniSat, Lingeling) handle millions of variables effici
 \end{itemize}
 \end{frame}
 
-% ==================== WHY SAT? ====================
-\section{Why SAT over Backtracking?}
-
-\begin{frame}{Backtracking -- Limitations at Scale}
-Classical backtracking explores the search tree by guessing values and undoing bad choices.
-
+% ==================== SUdoku solving algorithm ====================
+\section{The Sudoku Solving Algorithms}
+\begin{frame}{The Backtracking Algorithm- How it works}
+    The backtracking algorithm is a DFS \( Depth First Search\) algorithm 
+    \begin{itemize}
+        \item Firstly finds an empty cell  
+        \item Tries for a candidate number \( 1 , 2 , 3, 4 ... etc \) and checks the constraint
+        \item if the number is valid it places on the cell if not it checks foranother number resursively
+        \item If none of the number works it undos the last assignment  \( Backtracking \) and tries for a different number
+        \item This is recursively continued untill the grid is completed or all possibilities are exhausted     
+    \end{itemize}
+\end{frame}
+\begin{frame}{The Backtracking Algorithm : Limitation}
 \begin{itemize}
-    \item Works for $9\times9$ Sudoku (manageable search space).
-    \item For $16\times16$: up to $16^{256}$ possible grids -- exponential blow-up.
-    \item \textbf{No conflict analysis}: a contradiction is discovered only after filling many cells; the solver backtracks one step at a time.
-    \item \textbf{No clause learning}: the same mistake can be repeated in different subtrees.
-    \item For $25\times25$ and $36\times36$, backtracking becomes computationally impractical -- solve times grow super-exponentially.
+    \item Works for relatively nicely for small grid (i.e $ 4\times4 , 9\times9 , 16\times16 $) 
+    \item For $16\times16$: up to $16^{256}$ possible grids i.e growing exponentially
+    \item Contradiction is discovered only after filling many cells; the solver backtracks one step at a time.
+    \item The same errors can be repeated in different subtrees. 
+    \item For $25\times25$ and $36\times36$, backtracking becomes computationally impractical -- solving  times grow super-exponentially.
 \end{itemize}
 
 \vspace{0.3em}
 \textit{Backtracking is a depth-first search with no memory of failures.}
+\end{frame}
+\begin{frame}{The CDCL Algorithm (Conflict-Driven Clause Learning)}
+
+CDCL is an advanced algorithm used in modern SAT solvers.
+
+\begin{itemize}
+    \item \textbf{Decision step:} Choose a variable and assign a value (make a guess).
+    
+    \item \textbf{Unit propagation:} Automatically deduce forced assignments from constraints (Boolean Constraint Propagation).
+    \item \textbf{Conflict detection:} If a contradiction occurs, identify the conflicting constraints.
+    \item \textbf{Clause learning:} Analyze the conflict and learn a new clause that prevents repeating the same mistake.
+    
+    \item Repeat until:
+    \begin{itemize}
+        \item A satisfying assignment is found, or
+        \item The formula is proven unsatisfiable.
+    \end{itemize}
+\end{itemize}
+
 \end{frame}
 
 \begin{frame}{SAT (CDCL) -- Advantages for Hard Instances}
@@ -105,46 +142,37 @@ Classical backtracking explores the search tree by guessing values and undoing b
     \item \textbf{Conflict analysis}: when a contradiction occurs, the solver determines \emph{why}.
     \item \textbf{Clause learning}: the reason for the conflict is stored as a new clause, preventing recurrence in other branches.
     \item \textbf{Non-chronological backjumping}: the solver jumps back multiple levels at once, skipping entire subtrees.
+\end{itemize}
+\end{frame}
+\begin{frame}
+\begin{itemize}
+    
     \item \textbf{Unit propagation}: forced assignments are inferred immediately, pruning the space.
     \item \textbf{Provably complete}: if UNSAT, it \emph{proves} no solution exists -- backtracking cannot do this efficiently.
 \end{itemize}
 
 \vspace{0.3em}
-Result: SAT scales to $25\times25$ and $36\times36$ Sudoku where backtracking fails.
+Result: SAT scales to $25\times25$ and $36\times36$ and can easily be expanded to $n^2 \times n^2 $ Sudoku where backtracking fails or takes a very long time.
 \end{frame}
 
-\begin{frame}{Solve Time Comparison: Backtracking vs SAT}
-\begin{center}
-\begin{tikzpicture}
-\begin{axis}[
-    xlabel={Grid Size},
-    ylabel={Solve Time (s)},
-    xtick={9,16,25,36},
-    xticklabels={$9{\times}9$, $16{\times}16$, $25{\times}25$, $36{\times}36$},
-    ymode=log,
-    log ticks with fixed point,
-    width=9cm, height=5.8cm,
-    grid=major,
-    legend pos=north west,
-    legend style={font=\small},
-    ymajorgrids=true,
-    grid style=dashed,
-]
-% !! REPLACE these coordinates with your actual benchmark data !!
-\addplot[color=red, mark=square*, thick] coordinates {
-    (9,  0.001) (16, 0.85) (25, 120.0) (36, 3600.0)
-};
-\addlegendentry{Backtracking}
-\addplot[color=myblue, mark=*, thick] coordinates {
-    (9,  0.0005) (16, 0.04) (25, 1.2) (36, 18.0)
-};
-\addlegendentry{SAT (CDCL)}
-\end{axis}
-\end{tikzpicture}
-\end{center}
-\small \textit{Replace Y-axis values with your actual benchmark results.}
-\end{frame}
+%======================= WHY SAT==============%
+\section{Why SAT?}
+\begin{frame}
+    SAT is one of the most powerful problem-solving frameworks in computer science.
 
+\begin{itemize}
+    \item \textbf{Expressiveness:} Many combinatorial problems can be encoded as SAT.
+    
+    \item \textbf{Powerful solvers:} Modern CDCL solvers handle millions of variables efficiently.
+    
+    \item \textbf{Reduction principle:} If we can encode a problem into SAT, 
+    we can leverage highly optimized SAT solvers instead of designing a new algorithm.
+    
+    \item \textbf{Theory support:} Yato (2003) showed that even restricted forms of Sudoku are NP-complete — 
+    meaning structured constraint problems can be naturally reduced to SAT.
+\end{itemize}
+
+\end{frame}
 % ==================== MATHEMATICAL FORMULATION ====================
 \section{Mathematical Formulation}
 
@@ -156,7 +184,8 @@ For an $n^2 \times n^2$ Sudoku, introduce Boolean variables:
 
 \textbf{Example -- $9\times9$:} $\;9^3 = 729$ variables.
 \textbf{$16\times16$:} $\;16^3 = 4{,}096$ variables.
-
+\end{frame}
+\begin{frame}
 \vspace{0.5em}
 The complete CNF formula enforces four constraint families [Lynce \& Ouaknine, 2006]:
 \begin{center}
@@ -209,7 +238,7 @@ Constraint & Meaning \\
 % ==================== OPTIMIZED ENCODING ====================
 \section{Optimized Encoding}
 
-\begin{frame}{Why Standard Encoding Is Inefficient}
+\begin{frame}{The optimized encoding for sudoku}
 The naive extended encoding produces large CNF files:
 \begin{center}
 \begin{tabular}{lrr}
@@ -223,7 +252,8 @@ $36\times36$ & 46,656 & 6,000,000 \\
 \bottomrule
 \end{tabular}
 \end{center}
-
+\end{frame} 
+\begin{frame}
 \textbf{Problem:} Many clauses are \emph{already satisfied} by the given clues. Passing satisfied clauses to CDCL wastes propagation effort.
 
 \vspace{0.3em}
@@ -244,7 +274,8 @@ $V^0$ & Unknown & Passed to SAT solver \\
 \bottomrule
 \end{tabular}
 \end{center}
-
+\end{frame}
+\begin{frame}
 \vspace{0.4em}
 \textbf{Example:} If cell $(1,1) = 5$, then:
 \begin{itemize}
@@ -265,8 +296,10 @@ If any literal in a clause is TRUE (variable in $V^+$ with matching sign), the e
 \vspace{0.4em}
 \textbf{Rule 2 -- $\downarrow V^-$ (False literal elimination):}\\
 If a literal is FALSE (variable in $V^-$ or $V^+$ with opposite sign), that literal is \emph{removed} from the clause.
+\vspace{0.4em}\\
+\end{frame}
+\begin{frame} 
 
-\vspace{0.4em}
 Three encodings compared (all equisatisfiable):
 \begin{center}
 \small
@@ -283,38 +316,11 @@ Extended  & $+ \;\text{Cell}_u$ (adds redundant but helpful clauses) \\
 Tests in [Lynce \& Ouaknine, 2006] show the optimised encoding is fastest in practice.
 \end{frame}
 
-\begin{frame}{Effect on Clause Count (Standard vs Optimised)}
-\begin{center}
-\begin{tikzpicture}
-\begin{axis}[
-    ybar,
-    bar width=14pt,
-    xlabel={Grid Size},
-    ylabel={Number of Clauses},
-    xtick={1,2,3,4},
-    xticklabels={$9{\times}9$, $16{\times}16$, $25{\times}25$, $36{\times}36$},
-    ymode=log,
-    legend pos=north west,
-    legend style={font=\small},
-    width=9.5cm, height=5.8cm,
-    ymajorgrids=true,
-    grid style=dashed,
-]
-% !! REPLACE with your actual cnf header data !!
-\addplot[fill=red!60] coordinates {(1,11745)(2,310000)(3,1500000)(4,6000000)};
-\addlegendentry{Standard Encoding}
-\addplot[fill=myblue!80] coordinates {(1,3500)(2,85000)(3,410000)(4,1700000)};
-\addlegendentry{Optimised Encoding}
-\end{axis}
-\end{tikzpicture}
-\end{center}
-\small \textit{Replace with actual clause counts from your \texttt{.cnf} file headers.}
-\end{frame}
 
 % ==================== DIMACS REPRESENTATION ====================
 \section{DIMACS Representation}
 
-\begin{frame}{DIMACS CNF -- The Standard Format}
+\begin{frame}[fragile]{DIMACS CNF -- The Standard Format}
 \textbf{DIMACS CNF} is the universal input format accepted by all SAT solvers.
 
 \vspace{0.3em}
@@ -360,7 +366,7 @@ $x_{9,9,9}$ & Cell $(9,9)$ contains 9 & 729 \\
 In the \textbf{optimised encoding}, only $V^0$ variables are numbered (compactly re-indexed), so total variable count is far below $n^6$.
 \end{frame}
 
-\begin{frame}{Sudoku Clues and Constraints in DIMACS}
+\begin{frame}[fragile]{Sudoku Clues and Constraints in DIMACS}
 A clue -- pre-filled cell $(i,j)=k$ -- becomes a \textbf{unit clause}:
 \begin{lstlisting}
 c 4x4 puzzle: clue cell(1,2)=2 => x_{1,2,2}
@@ -385,21 +391,22 @@ All encoded Sudoku problems are written to \texttt{.cnf} files in \texttt{../CNF
 \end{frame}
 
 % ==================== IMPLEMENTATION ====================
+
 \section{Implementation}
 
-\begin{frame}{Pipeline Overview}
+\begin{frame}{Overview}
 \begin{center}
 \renewcommand{\arraystretch}{1.5}
 \begin{tabular}{ccccc}
 \fbox{\parbox{1.8cm}{\centering Puzzle\\\texttt{.txt}}} &
 $\longrightarrow$ &
-\fbox{\parbox{2.2cm}{\centering CNF Encoder\\\texttt{sudoku\_to\_cnf.py}}} &
+\fbox{\parbox{3.2cm}{\centering CNF Encoder\\\texttt{sudoku\_to\_cnf.py}}} &
 $\longrightarrow$ &
 \fbox{\parbox{1.8cm}{\centering DIMACS\\\texttt{.cnf}}} \\[12pt]
 & & & & $\downarrow$ \\[4pt]
 & & \fbox{\parbox{2.2cm}{\centering Solution\\(decoded grid)}} &
 $\longleftarrow$ &
-\fbox{\parbox{1.8cm}{\centering SAT Solver\\CDCL / PySAT}} \\
+\fbox{\parbox{1.8cm}{\centering SAT Solver}} \\
 \end{tabular}
 \end{center}
 
@@ -407,11 +414,48 @@ $\longleftarrow$ &
 \begin{itemize}
     \item Puzzles generated for $n \in \{3,4,5,6\}$ (grids $9$--$36$).
     \item Encoder applies optimised $\phi'$ encoding, writing compact DIMACS.
-    \item Solver: PySAT (Glucose / MiniSat) + custom CDCL solver in C.
+    \item Solver: satch + custom CDCL solver in C.
 \end{itemize}
 \end{frame}
+% \begin{frame}[fragile]{1. Variable Partitioning}
+% \begin{lstlisting}[language=Python]
+%    % Fixed values → V+
+% if v != 0:
+%     V_plus.add((r, c, v))
 
-\begin{frame}[fragile]{CNF Encoder -- Variable Partitioning}
+% % Mark conflicting values → V-
+% for v2 in range(1, n+1):
+%     if v2 != v:
+%         V_minus.add((r, c, v2))
+
+% % Remaining → V0
+% if triple not in V_plus 
+%    and triple not in V_minus:
+%     V0.add(triple) 
+% \end{lstlisting}
+
+
+% \end{frame}
+% \begin{frame}[fragile]{DIMACS Mapping and Simplification}
+% \begin{lstlisting}[language=Python]
+% V0_list = sorted(V0)
+% var_map = {t: i+1 
+%            for i,t in enumerate(V0_list)}
+
+% def lit(r,c,v,neg=False):
+%     if (r,c,v) in V_plus:
+%         return "TRUE"
+%     if (r,c,v) in V_minus:
+%         return "FALSE"
+%     idx = var_map[(r,c,v)]
+%     return -idx if neg else idx  
+% \end{lstlisting}
+
+
+% \end{frame}
+
+
+\begin{frame}[fragile]{CNF Encoder}
 \begin{lstlisting}[language=Python]
 def encode(n, puzzle):
     V_plus, V_minus = set(), set()
@@ -457,74 +501,56 @@ def encode(n, puzzle):
 \end{lstlisting}
 \end{frame}
 
+\section{CDCL Implementation}
+\begin{frame}[fragile]
+    We made our CDCL algorithm based on satch , a SAT solving tool avaible 
+    below is a code snippet:
+    \begin{lstlisting}[language=C]
+    static int solve(void) {
+    solver.level = 0;
+    for (;;) {
+        int conflict = propagate();
+        if (conflict >= 0) {
+            if (solver.level == 0) return UNSAT;
+            int bt = analyze(conflict);
+            backtrack(bt);
+            continue;
+        }
+        int var = decide();
+        if (var == 0) return SAT;
+        solver.level++;
+        assign(var, solver.level, -1);
+    }
+}
+    \end{lstlisting}
+\end{frame}
+
 % ==================== RESULTS ====================
 \section{Results \& Comparison}
-
+\begin{frame}{Solve Time Comparison: Backtracking vs SAT}
+\includegraphics[width=\textwidth]{../Output/plot_by_grid_size.png}
+\end{frame}
 \begin{frame}{Solve Time: SAT vs Backtracking}
-\begin{center}
-\begin{tikzpicture}
-\begin{axis}[
-    xlabel={Grid Size},
-    ylabel={Average Solve Time (s)},
-    xtick={9,16,25,36},
-    xticklabels={$9{\times}9$, $16{\times}16$, $25{\times}25$, $36{\times}36$},
-    ymode=log,
-    log ticks with fixed point,
-    width=9.5cm, height=5.8cm,
-    grid=major,
-    legend pos=north west,
-    legend style={font=\small},
-    ymajorgrids=true,
-    grid style=dashed,
-]
-% !! REPLACE with your actual benchmark data !!
-\addplot[color=red, mark=square*, thick] coordinates {
-    (9,  0.001) (16, 0.85) (25, 120.0) (36, 3600.0)
-};
-\addlegendentry{Backtracking}
-\addplot[color=myblue, mark=*, thick] coordinates {
-    (9,  0.0005) (16, 0.04) (25, 1.2) (36, 18.0)
-};
-\addlegendentry{SAT (CDCL)}
-\end{axis}
-\end{tikzpicture}
-\end{center}
-\small \textit{Replace placeholder values with your actual benchmark data.}
+\includegraphics[width=1\textwidth]{../Output/plot_scaling.png }
+\end{frame}
+\section{Comparision between standard Vs Optimized CNF}
+\begin{frame}
+    \includegraphics[width=\textwidth]{../Output/cnf_encoding_comparison.png}
 \end{frame}
 
-\begin{frame}{Variables \& Clauses: Standard vs Optimised}
-\begin{center}
-\begin{tabular}{lrrrr}
-\toprule
-Grid & \multicolumn{2}{c}{Standard Encoding} & \multicolumn{2}{c}{Optimised Encoding} \\
-\cmidrule(lr){2-3} \cmidrule(lr){4-5}
-     & Vars & Clauses & Vars & Clauses \\
-\midrule
-$9\times9$   & 729    & 11,745  & \textit{tbd} & \textit{tbd} \\
-$16\times16$ & 4,096  & 310,000 & \textit{tbd} & \textit{tbd} \\
-$25\times25$ & 15,625 & 1,500,000 & \textit{tbd} & \textit{tbd} \\
-$36\times36$ & 46,656 & 6,000,000 & \textit{tbd} & \textit{tbd} \\
-\bottomrule
-\end{tabular}
-\end{center}
-
-\vspace{0.3em}
-Fill \textit{tbd} from your \texttt{.cnf} file headers -- the encoder prints:\\
-\texttt{vars=X \quad clauses=Y \quad time=Zs} for each puzzle.
-\end{frame}
 
 \begin{frame}{Observations}
 \begin{itemize}
     \item For $9\times9$, both methods solve near-instantly; SAT has minor encoding overhead.
     \item From $16\times16$ onward, SAT's advantage is clear -- \textbf{10$\times$--200$\times$ faster}.
-    \item At $25\times25$ and beyond, backtracking becomes \textbf{practically infeasible} (hours to days); SAT solves in seconds to minutes.
+    \item At $25\times25$ and beyond, backtracking becomes practically infeasible where as SAT solves in seconds to minutes.
     \item The optimised encoding reduces clause count by \textbf{60--75\%} vs full extended encoding, giving CDCL a head start through pre-eliminated redundant clauses.
     \item Difficult 17-clue $9\times9$ puzzles confirm CDCL clause learning handles hard instances that stump simple backtracking.
     \item Unsatisfiable puzzles are \textbf{proved} unsolvable -- not just timed out.
 \end{itemize}
 \end{frame}
 
-% ==================== REFERENCES ====================
+% ==================== REFERENCES ===============
 \section{References}
 
 \begin{frame}{References}

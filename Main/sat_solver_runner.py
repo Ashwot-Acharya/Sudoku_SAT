@@ -22,7 +22,7 @@ def find_solver(preferred=None):
     candidates = []
     if preferred:
         candidates.append(preferred)
-    for name in ["satch", "minisat", "picosat", "glucose"]:
+    for name in ["satch", "minisat", "picosat", "glucose", "Solver"]:
         candidates.append(os.path.join(exe_dir, name))
         candidates.append(name)
 

@@ -1,8 +1,11 @@
 \beamer@sectionintoc {1}{Introduction}{3}{0}{1}
-\beamer@sectionintoc {2}{Why SAT over Backtracking?}{7}{0}{2}
-\beamer@sectionintoc {3}{Mathematical Formulation}{11}{0}{3}
-\beamer@sectionintoc {4}{Optimized Encoding}{15}{0}{4}
-\beamer@sectionintoc {5}{DIMACS Representation}{20}{0}{5}
-\beamer@sectionintoc {6}{Implementation}{24}{0}{6}
-\beamer@sectionintoc {7}{Results \& Comparison}{28}{0}{7}
-\beamer@sectionintoc {8}{References}{32}{0}{8}
+\beamer@sectionintoc {2}{The Sudoku Solving Algorithms}{7}{0}{2}
+\beamer@sectionintoc {3}{Why SAT?}{13}{0}{3}
+\beamer@sectionintoc {4}{Mathematical Formulation}{15}{0}{4}
+\beamer@sectionintoc {5}{Optimized Encoding}{20}{0}{5}
+\beamer@sectionintoc {6}{DIMACS Representation}{27}{0}{6}
+\beamer@sectionintoc {7}{Implementation}{31}{0}{7}
+\beamer@sectionintoc {8}{CDCL Implementation}{35}{0}{8}
+\beamer@sectionintoc {9}{Results \& Comparison}{37}{0}{9}
+\beamer@sectionintoc {10}{Comparision between standard Vs Optimized CNF}{40}{0}{10}
+\beamer@sectionintoc {11}{References}{43}{0}{11}

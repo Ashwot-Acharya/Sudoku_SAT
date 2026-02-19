@@ -10,8 +10,8 @@ sys.path.insert(0, SCRIPT_DIR)
 OUTPUT_DIR = os.path.join(SCRIPT_DIR, "..", "Output")
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
-TIMEOUT_PLOT_Y = 10 * 60
-BT_TIMEOUT     = 10 * 60
+TIMEOUT_PLOT_Y = 5 * 60
+BT_TIMEOUT     = 5 * 60
 
 def _load(name):
     path = os.path.join(SCRIPT_DIR, name + ".py")

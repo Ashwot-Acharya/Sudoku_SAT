@@ -3,473 +3,475 @@
 #include <string.h>
 #include <stdbool.h>
 
-#define MAX_VARS 5000
-#define MAX_CLAUSES 100000
-#define MAX_LITS 50
-#define MAX_TRAIL 100000
+/*  ═══════════════════════════════════════════════════════════════════════════
+    CDCL SAT Solver — compatible with the Kwon & Jain optimised φ' encoding
+    produced by sudoku_to_cnf.py.
 
-#define SAT 10
-#define UNSAT 20
+    The CNF file embeds three kinds of comment lines the solver uses to
+    reconstruct the full Sudoku grid after finding a satisfying assignment:
+
+        c SIZE <N>                 board is N×N
+        c MAP  <var> <r> <c> <v>  DIMACS variable <var> represents cell(r,c)=v
+        c FIXED <r> <c> <v>       cell(r,c) was pre-assigned to v (not in CNF)
+
+    All (r,c,v) values are 1-indexed.
+    ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ─── tuneable limits ─────────────────────────────────────────────────────── */
+#define MAX_VARS      500000
+#define MAX_TRAIL     500000
+#define MAX_LIT_BUF   256        /* max literals per clause in the input file */
+#define INIT_CLAUSES  65536      /* initial clause array capacity              */
+
+/* ─── result codes ────────────────────────────────────────────────────────── */
+#define SAT        10
+#define UNSAT      20
 #define UNASSIGNED -1
 
+/* ══════════════════════════════════════════════════════════════════════════ */
+/* Data structures                                                            */
+/* ══════════════════════════════════════════════════════════════════════════ */
+
 typedef struct {
-    int lits[MAX_LITS];
-    int size;
+    int *lits;
+    int  size;
 } Clause;
 
 typedef struct {
-
     int num_vars;
     int num_clauses;
+    int clause_cap;
 
-    Clause clauses[MAX_CLAUSES];
+    Clause *clauses;
 
-    int assignment[MAX_VARS+1];
-    int level_of[MAX_VARS+1];
-    int reason[MAX_VARS+1];
+    int *assignment;   /* [0..num_vars]  1=true  0=false  UNASSIGNED        */
+    int *level_of;     /* decision level when var was assigned               */
+    int *reason;       /* forcing clause index, or -1 for decisions          */
 
-    int trail[MAX_TRAIL];  // stores literals
-    int trail_top;
+    int *trail;        /* literals in assignment order                       */
+    int  trail_top;
 
-    int level;
-
+    int level;         /* current decision level                             */
 } Solver;
-typedef struct {
-    int row;
-    int col;
-    int val;
-    bool exists;
-} VarMap;
 
-VarMap var_map[MAX_VARS+1];
+/* ─── Sudoku metadata, read from CNF comments ─────────────────────────────── */
+typedef struct { int r, c, v; } VarEntry;  /* all 1-indexed                  */
 
-Solver solver;
+static int       N             = 0;
+static VarEntry *var_info      = NULL;     /* var_info[dimacs_var] -> (r,c,v) */
+static int       var_info_cap  = 0;
 
-////////////////////////////////////////////////////////////
-// Utility
-////////////////////////////////////////////////////////////
+/* fixed cells stored as flat int triples: [r0, c0, v0, r1, c1, v1, ...]     */
+static int *fixed_flat  = NULL;
+static int  fixed_count = 0;
+static int  fixed_cap   = 0;
 
-int absval(int x) { return x > 0 ? x : -x; }
+static Solver solver;
 
-int lit_value(int lit) {
+/* ══════════════════════════════════════════════════════════════════════════ */
+/* Utility                                                                    */
+/* ══════════════════════════════════════════════════════════════════════════ */
+
+static inline int absval(int x) { return x > 0 ? x : -x; }
+
+static inline int lit_value(int lit) {
     int var = absval(lit);
     int val = solver.assignment[var];
-
     if (val == UNASSIGNED) return UNASSIGNED;
     return (lit > 0) ? val : !val;
 }
 
-////////////////////////////////////////////////////////////
-// Add clause
-////////////////////////////////////////////////////////////
+/* ══════════════════════════════════════════════════════════════════════════ */
+/* Clause management (dynamic)                                                */
+/* ══════════════════════════════════════════════════════════════════════════ */
 
-void add_clause(int *lits, int size) {
-    Clause *c = &solver.clauses[solver.num_clauses++];
-    c->size = size;
-    for (int i = 0; i < size; i++)
-        c->lits[i] = lits[i];
+static void add_clause(int *lits, int size) {
+    if (solver.num_clauses >= solver.clause_cap) {
+        solver.clause_cap *= 2;
+        solver.clauses = realloc(solver.clauses,
+                                 (size_t)solver.clause_cap * sizeof(Clause));
+        if (!solver.clauses) { fprintf(stderr, "OOM: clauses\n"); exit(1); }
+    }
+    Clause *c  = &solver.clauses[solver.num_clauses++];
+    c->size    = size;
+    c->lits    = malloc((size_t)size * sizeof(int));
+    if (!c->lits) { fprintf(stderr, "OOM: clause lits\n"); exit(1); }
+    memcpy(c->lits, lits, (size_t)size * sizeof(int));
 }
 
-////////////////////////////////////////////////////////////
-// Assign literal
-////////////////////////////////////////////////////////////
+/* ══════════════════════════════════════════════════════════════════════════ */
+/* Assignment                                                                 */
+/* ══════════════════════════════════════════════════════════════════════════ */
 
-void assign(int lit, int level, int reason_clause) {
-
+static void assign(int lit, int level, int reason_clause) {
     int var = absval(lit);
-    int val = (lit > 0);
-
-    solver.assignment[var] = val;
-    solver.level_of[var] = level;
-    solver.reason[var] = reason_clause;
-
+    solver.assignment[var] = (lit > 0) ? 1 : 0;
+    solver.level_of[var]   = level;
+    solver.reason[var]     = reason_clause;
     solver.trail[solver.trail_top++] = lit;
 }
 
-////////////////////////////////////////////////////////////
-// Propagation (returns conflict clause index or -1)
-////////////////////////////////////////////////////////////
+/* ══════════════════════════════════════════════════════════════════════════ */
+/* Unit propagation                                                           */
+/* Returns first conflict clause index, or -1.                               */
+/* ══════════════════════════════════════════════════════════════════════════ */
 
-int propagate() {
-
+static int propagate(void) {
     bool changed = true;
-
     while (changed) {
-
         changed = false;
-
         for (int i = 0; i < solver.num_clauses; i++) {
-
             Clause *c = &solver.clauses[i];
-
-            int unassigned = 0;
-            int last_lit = 0;
+            int unassigned = 0, last_lit = 0;
             bool satisfied = false;
 
             for (int j = 0; j < c->size; j++) {
-
                 int val = lit_value(c->lits[j]);
-
-                if (val == 1) {
-                    satisfied = true;
-                    break;
-                }
-
-                if (val == UNASSIGNED) {
-                    unassigned++;
-                    last_lit = c->lits[j];
-                }
+                if (val == 1)          { satisfied = true; break; }
+                if (val == UNASSIGNED) { unassigned++; last_lit = c->lits[j]; }
             }
-
-            if (satisfied)
-                continue;
-
-            if (unassigned == 0)
-                return i;  // conflict clause
-
+            if (satisfied)     continue;
+            if (unassigned == 0) return i;        /* conflict               */
             if (unassigned == 1) {
                 assign(last_lit, solver.level, i);
                 changed = true;
             }
         }
     }
-
     return -1;
 }
 
-////////////////////////////////////////////////////////////
-// Decide next variable
-////////////////////////////////////////////////////////////
+/* ══════════════════════════════════════════════════════════════════════════ */
+/* Decision — first unassigned variable, positive polarity                   */
+/* ══════════════════════════════════════════════════════════════════════════ */
 
-int decide() {
+static int decide(void) {
     for (int i = 1; i <= solver.num_vars; i++)
         if (solver.assignment[i] == UNASSIGNED)
             return i;
     return 0;
 }
 
-////////////////////////////////////////////////////////////
-// Backtrack
-////////////////////////////////////////////////////////////
+/* ══════════════════════════════════════════════════════════════════════════ */
+/* Backtrack to given level                                                   */
+/* ══════════════════════════════════════════════════════════════════════════ */
 
-void backtrack(int level) {
-
+static void backtrack(int level) {
     while (solver.trail_top > 0) {
-
         int lit = solver.trail[solver.trail_top - 1];
         int var = absval(lit);
-
-        if (solver.level_of[var] <= level)
-            break;
-
+        if (solver.level_of[var] <= level) break;
         solver.assignment[var] = UNASSIGNED;
-        solver.reason[var] = -1;
-        solver.level_of[var] = 0;
-
+        solver.reason[var]     = -1;
+        solver.level_of[var]   = 0;
         solver.trail_top--;
     }
-
     solver.level = level;
 }
 
-int int_cuberoot(int x)
-{
-    int r = 1;
-    while (r*r*r < x)
-        r++;
-    return r;
-}
-void decode_and_print_sudoku()
-{
-   int N = int_cuberoot(solver.num_vars);
+/* ══════════════════════════════════════════════════════════════════════════ */
+/* First-UIP conflict analysis                                                */
+/* Adds learned clause, returns backtrack level.                             */
+/* ══════════════════════════════════════════════════════════════════════════ */
 
-if (N*N*N != solver.num_vars)
-{
-    printf("Variable count (%d) is not N^3 — cannot decode as standard Sudoku.\n",
-           solver.num_vars);
-    return;
-}
+static int analyze(int conflict_clause) {
+    /*
+     * Use a generation counter instead of memset to clear seen[]:
+     *   gen_of[v] == cur_gen  means  seen[v] is active.
+     */
+    static int seen[MAX_VARS + 1];
+    static int gen_of[MAX_VARS + 1];
+    static int cur_gen = 0;
+    cur_gen++;
 
-
-    if (N*N*N > solver.num_vars)
-        N--;  // adjust if overshoot
-
-    if (N <= 0)
-    {
-        printf("Could not determine Sudoku size.\n");
-        return;
-    }
-
-    printf("\nSudoku size detected: %dx%d\n\n", N, N);
-
-    // Allocate grid
-    int **grid = malloc(N * sizeof(int*));
-    for (int i = 0; i < N; i++)
-    {
-        grid[i] = malloc(N * sizeof(int));
-        for (int j = 0; j < N; j++)
-            grid[i][j] = 0;
-    }
-
-    int sudoku_vars = N*N*N;
-
-    // Decode only first N^3 variables
-    for (int var = 1; var <= sudoku_vars; var++)
-    {
-        if (solver.assignment[var] != 1)
-            continue;
-
-        int v = (var - 1) % N;
-        int c = ((var - 1) / N) % N;
-        int r = (var - 1) / (N * N);
-
-        if (r < N && c < N)
-            grid[r][c] = v + 1;
-    }
-
-    // Print nicely formatted grid
-    int base = 1;
-    while (base * base < N)
-        base++;
-
-    for (int r = 0; r < N; r++)
-    {
-        if (r % base == 0 && r != 0)
-        {
-            for (int i = 0; i < N*2 + base - 1; i++)
-                printf("-");
-            printf("\n");
-        }
-
-        for (int c = 0; c < N; c++)
-        {
-            if (c % base == 0 && c != 0)
-                printf("| ");
-
-            int val = grid[r][c];
-
-            if (val < 10)
-                printf("%d ", val);
-            else
-                printf("%c ", 'A' + val - 10);
-        }
-        printf("\n");
-    }
-
-    for (int i = 0; i < N; i++)
-        free(grid[i]);
-    free(grid);
-}
-
-////////////////////////////////////////////////////////////
-// First-UIP Conflict Analysis
-////////////////////////////////////////////////////////////
-
-int analyze(int conflict_clause, int *out_clause) {
-
-    int seen[MAX_VARS+1] = {0};
+    static int learned[MAX_LIT_BUF];
+    int size    = 0;
     int counter = 0;
-    int idx = solver.trail_top - 1;
+    int idx     = solver.trail_top - 1;
 
+    /* initialise with conflict clause */
     Clause *c = &solver.clauses[conflict_clause];
-
-    // mark literals in conflict clause
     for (int i = 0; i < c->size; i++) {
         int v = absval(c->lits[i]);
-        seen[v] = 1;
-
-        if (solver.level_of[v] == solver.level)
-            counter++;
+        if (gen_of[v] != cur_gen) {
+            gen_of[v] = cur_gen; seen[v] = 1;
+            if (solver.level_of[v] == solver.level) counter++;
+        }
     }
 
+    /* resolve until one literal at current level remains (the UIP) */
     while (counter > 1) {
+        while (gen_of[absval(solver.trail[idx])] != cur_gen ||
+               !seen[absval(solver.trail[idx])])
+            idx--;
 
         int lit = solver.trail[idx--];
-        int v = absval(lit);
-
-        if (!seen[v])
-            continue;
-
+        int v   = absval(lit);
         seen[v] = 0;
         counter--;
 
-        int reason_clause = solver.reason[v];
+        int rc = solver.reason[v];
+        if (rc < 0) continue;
 
-        if (reason_clause == -1)
-            continue;
-
-        Clause *rc = &solver.clauses[reason_clause];
-
-        for (int i = 0; i < rc->size; i++) {
-
-            int vv = absval(rc->lits[i]);
-
-            if (!seen[vv]) {
-                seen[vv] = 1;
-
-                if (solver.level_of[vv] == solver.level)
-                    counter++;
+        Clause *rc_c = &solver.clauses[rc];
+        for (int i = 0; i < rc_c->size; i++) {
+            int vv = absval(rc_c->lits[i]);
+            if (gen_of[vv] != cur_gen) {
+                gen_of[vv] = cur_gen; seen[vv] = 1;
+                if (solver.level_of[vv] == solver.level) counter++;
             }
         }
     }
 
-    int size = 0;
+    /* build learned clause */
     int backtrack_level = 0;
-
     for (int v = 1; v <= solver.num_vars; v++) {
-
-        if (seen[v]) {
-
-            int lit = solver.assignment[v] ? -v : v;
-            out_clause[size++] = lit;
-
-            if (solver.level_of[v] != solver.level &&
-                solver.level_of[v] > backtrack_level)
-                backtrack_level = solver.level_of[v];
-        }
+        if (gen_of[v] != cur_gen || !seen[v]) continue;
+        int lit = (solver.assignment[v] == 1) ? -v : v;
+        if (size < MAX_LIT_BUF) learned[size++] = lit;
+        if (solver.level_of[v] != solver.level &&
+            solver.level_of[v] > backtrack_level)
+            backtrack_level = solver.level_of[v];
     }
 
-    add_clause(out_clause, size);
+    add_clause(learned, size);
     return backtrack_level;
 }
 
-////////////////////////////////////////////////////////////
-// Solve
-////////////////////////////////////////////////////////////
+/* ══════════════════════════════════════════════════════════════════════════ */
+/* CDCL main loop                                                             */
+/* ══════════════════════════════════════════════════════════════════════════ */
 
-int solve() {
-
+static int solve(void) {
     solver.level = 0;
-
-    while (1) {
-
+    for (;;) {
         int conflict = propagate();
-
-        if (conflict != -1) {
-
-            if (solver.level == 0)
-                return UNSAT;
-
-            int learned[MAX_LITS];
-            int backtrack_level = analyze(conflict, learned);
-
-            backtrack(backtrack_level);
+        if (conflict >= 0) {
+            if (solver.level == 0) return UNSAT;
+            int bt = analyze(conflict);
+            backtrack(bt);
             continue;
         }
-
         int var = decide();
-
-        if (var == 0)
-            return SAT;
-
+        if (var == 0) return SAT;
         solver.level++;
-        assign(var, solver.level, -1);  // decision literal
+        assign(var, solver.level, -1);
     }
 }
 
-////////////////////////////////////////////////////////////
-// DIMACS parser
-////////////////////////////////////////////////////////////
+/* ══════════════════════════════════════════════════════════════════════════ */
+/* DIMACS parser — reads clause lines AND c SIZE / c MAP / c FIXED comments  */
+/* ══════════════════════════════════════════════════════════════════════════ */
 
-void parse_dimacs(FILE *f) {
+static void ensure_var_info(int var) {
+    if (var < var_info_cap) return;
+    int new_cap = var_info_cap ? var_info_cap * 2 : 1024;
+    while (new_cap <= var) new_cap *= 2;
+    var_info = realloc(var_info, (size_t)new_cap * sizeof(VarEntry));
+    if (!var_info) { fprintf(stderr, "OOM: var_info\n"); exit(1); }
+    memset(var_info + var_info_cap, 0,
+           (size_t)(new_cap - var_info_cap) * sizeof(VarEntry));
+    var_info_cap = new_cap;
+}
 
-    char line[1024];
-    int lits[MAX_LITS];
+static void push_fixed(int r, int c, int v) {
+    if (fixed_count * 3 + 3 > fixed_cap) {
+        fixed_cap = fixed_cap ? fixed_cap * 2 : 192;
+        fixed_flat = realloc(fixed_flat, (size_t)fixed_cap * sizeof(int));
+        if (!fixed_flat) { fprintf(stderr, "OOM: fixed_flat\n"); exit(1); }
+    }
+    fixed_flat[fixed_count * 3 + 0] = r;
+    fixed_flat[fixed_count * 3 + 1] = c;
+    fixed_flat[fixed_count * 3 + 2] = v;
+    fixed_count++;
+}
 
+static void parse_dimacs(FILE *f) {
+    char line[8192];
+    int  lits[MAX_LIT_BUF];
+
+    solver.clause_cap  = INIT_CLAUSES;
+    solver.clauses     = malloc((size_t)INIT_CLAUSES * sizeof(Clause));
     solver.num_clauses = 0;
 
     while (fgets(line, sizeof(line), f)) {
 
-        if (line[0] == 'c')
+        /* ── comment line ──────────────────────────────────────────────── */
+        if (line[0] == 'c') {
+            int vi, r, c, v;
+            if      (sscanf(line, "c SIZE %d",           &v)          == 1) { N = v; }
+            else if (sscanf(line, "c MAP %d %d %d %d",  &vi,&r,&c,&v) == 4) {
+                ensure_var_info(vi);
+                var_info[vi] = (VarEntry){r, c, v};
+            }
+            else if (sscanf(line, "c FIXED %d %d %d",   &r,&c,&v)    == 3) {
+                push_fixed(r, c, v);
+            }
             continue;
+        }
 
+        /* ── problem line ──────────────────────────────────────────────── */
         if (line[0] == 'p') {
-
-            sscanf(line, "p cnf %d %d",
-                   &solver.num_vars,
-                   &solver.num_clauses);
-
-            solver.num_clauses = 0;
+            int dv, dc;
+            sscanf(line, "p cnf %d %d", &dv, &dc);
+            solver.num_vars   = dv;
+            solver.assignment = malloc((size_t)(dv + 1) * sizeof(int));
+            solver.level_of   = calloc((size_t)(dv + 1), sizeof(int));
+            solver.reason     = malloc((size_t)(dv + 1) * sizeof(int));
+            solver.trail      = malloc((size_t)(dv + 1) * sizeof(int));
+            if (!solver.assignment||!solver.level_of||
+                !solver.reason    ||!solver.trail) {
+                fprintf(stderr,"OOM: solver arrays\n"); exit(1);
+            }
+            for (int i = 0; i <= dv; i++) {
+                solver.assignment[i] = UNASSIGNED;
+                solver.reason[i]     = -1;
+            }
             continue;
         }
 
-        int lit, count = 0;
-        char *token = strtok(line, " \t\n");
-
-        while (token) {
-
-            lit = atoi(token);
+        /* ── clause line ───────────────────────────────────────────────── */
+        int count = 0;
+        char *tok = strtok(line, " \t\n");
+        while (tok) {
+            int lit = atoi(tok);
             if (lit == 0) break;
-
-            lits[count++] = lit;
-            token = strtok(NULL, " \t\n");
+            if (count < MAX_LIT_BUF) lits[count++] = lit;
+            tok = strtok(NULL, " \t\n");
         }
-
-        if (count > 0)
-            add_clause(lits, count);
+        if (count > 0) add_clause(lits, count);
     }
 }
 
-////////////////////////////////////////////////////////////
-// Print Result
-////////////////////////////////////////////////////////////
+/* ══════════════════════════════════════════════════════════════════════════ */
+/* Print DIMACS-style result                                                  */
+/* ══════════════════════════════════════════════════════════════════════════ */
 
-void print_result(int res) {
-
+static void print_result(int res) {
     if (res == SAT) {
-
         printf("SAT\nv ");
-
         for (int i = 1; i <= solver.num_vars; i++) {
-
-            if (solver.assignment[i] == 1)
-                printf("%d ", i);
-            else if (solver.assignment[i] == 0)
-                printf("-%d ", i);
-            else
-                printf("%d ", i); // default true
+            if      (solver.assignment[i] == 1) printf("%d ",  i);
+            else if (solver.assignment[i] == 0) printf("-%d ", i);
+            else                                printf("%d ",  i);
         }
-
         printf("0\n");
-    }
-    else {
+    } else {
         printf("UNSAT\n");
     }
 }
 
-////////////////////////////////////////////////////////////
-// Main
-////////////////////////////////////////////////////////////
+/* ══════════════════════════════════════════════════════════════════════════ */
+/* Decode and pretty-print the Sudoku grid                                    */
+/*                                                                            */
+/*  Steps:                                                                    */
+/*    1. Allocate N×N grid, zero-filled.                                      */
+/*    2. Stamp in FIXED cells (pre-assigned, not in SAT variables).           */
+/*    3. For each SAT variable assigned TRUE, use var_info[] to find          */
+/*       which cell and value it represents, stamp into grid.                 */
+/* ══════════════════════════════════════════════════════════════════════════ */
+
+static void decode_and_print_sudoku(void) {
+    if (N <= 0) {
+        printf("(Sudoku decode skipped: no 'c SIZE N' comment found in CNF)\n");
+        return;
+    }
+
+    /* ── allocate grid ──────────────────────────────────────────────────── */
+    int **grid = malloc((size_t)N * sizeof(int *));
+    for (int i = 0; i < N; i++)
+        grid[i] = calloc((size_t)N, sizeof(int));
+
+    /* ── stamp fixed (pre-assigned) cells ───────────────────────────────── */
+    for (int i = 0; i < fixed_count; i++) {
+        int r = fixed_flat[i*3],  c = fixed_flat[i*3+1],  v = fixed_flat[i*3+2];
+        if (r >= 1 && r <= N && c >= 1 && c <= N)
+            grid[r-1][c-1] = v;
+    }
+
+    /* ── stamp free variables that were assigned TRUE ────────────────────── */
+    int conflicts = 0;
+    for (int var = 1; var <= solver.num_vars; var++) {
+        if (solver.assignment[var] != 1) continue;
+        if (var >= var_info_cap)          continue;
+
+        VarEntry *e = &var_info[var];
+        if (e->r < 1 || e->r > N || e->c < 1 || e->c > N || e->v < 1) continue;
+
+        int existing = grid[e->r - 1][e->c - 1];
+        if (existing != 0 && existing != e->v) {
+            fprintf(stderr,
+                "DECODE CONFLICT cell(%d,%d): existing=%d new=%d var=%d\n",
+                e->r, e->c, existing, e->v, var);
+            conflicts++;
+        }
+        grid[e->r - 1][e->c - 1] = e->v;
+    }
+    if (conflicts)
+        fprintf(stderr, "WARNING: %d decode conflicts detected.\n", conflicts);
+
+    /* ── pretty-print ───────────────────────────────────────────────────── */
+    printf("\nSudoku solution (%dx%d):\n\n", N, N);
+
+    /* box width = smallest integer whose square >= N */
+    int base = 1;
+    while (base * base < N) base++;
+
+    for (int r = 0; r < N; r++) {
+        /* horizontal separator between box rows */
+        if (r > 0 && r % base == 0) {
+            int dashes = N * 2 + (N / base - 1) * 2;
+            for (int i = 0; i < dashes; i++) putchar('-');
+            putchar('\n');
+        }
+        for (int c = 0; c < N; c++) {
+            /* vertical separator between box columns */
+            if (c > 0 && c % base == 0) printf("| ");
+
+            int val = grid[r][c];
+            if      (val == 0)  printf(". ");
+            else if (val <= 9)  printf("%d ", val);
+            else                printf("%c ", 'A' + val - 10);
+        }
+        putchar('\n');
+    }
+
+    /* ── cleanup ────────────────────────────────────────────────────────── */
+    for (int i = 0; i < N; i++) free(grid[i]);
+    free(grid);
+}
+
+/* ══════════════════════════════════════════════════════════════════════════ */
+/* main                                                                       */
+/* ══════════════════════════════════════════════════════════════════════════ */
 
 int main(int argc, char **argv) {
-
     if (argc < 2) {
-        printf("Usage: solver file.cnf\n");
+        fprintf(stderr, "Usage: %s file.cnf\n", argv[0]);
         return 1;
     }
-
-    memset(&solver, 0, sizeof(solver));
-
-    for (int i = 0; i <= MAX_VARS; i++)
-        solver.assignment[i] = UNASSIGNED;
 
     FILE *f = fopen(argv[1], "r");
-    if (!f) {
-        printf("File error\n");
-        return 1;
-    }
+    if (!f) { fprintf(stderr, "Cannot open file: %s\n", argv[1]); return 1; }
 
     parse_dimacs(f);
     fclose(f);
 
-  int res = solve();
-print_result(res);
+    int res = solve();
+    print_result(res);
 
-if (res == SAT)
-{
-    decode_and_print_sudoku();
-}
+    if (res == SAT)
+        decode_and_print_sudoku();
 
+    /* ── cleanup ──────────────────────────────────────────────────────── */
+    for (int i = 0; i < solver.num_clauses; i++) free(solver.clauses[i].lits);
+    free(solver.clauses);
+    free(solver.assignment);
+    free(solver.level_of);
+    free(solver.reason);
+    free(solver.trail);
+    free(var_info);
+    free(fixed_flat);
 
     return 0;
 }
