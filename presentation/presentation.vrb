@@ -1,0 +1,24 @@
+\frametitle{CNF Encoder -- Clause Generation}
+\begin{lstlisting}[language=Python]
+    def add_clause(literals):
+        resolved = []
+        for (r, c, v, neg) in literals:
+            l = lit(r, c, v, neg)
+            if l == "TRUE":  return      # satisfied -> drop clause  (Rule 1)
+            if l == "FALSE": continue    # false lit -> drop literal (Rule 2)
+            resolved.append(l)
+        if resolved: clauses.append(resolved)
+
+    # Cell definedness: each cell has at least one value
+    for r in range(1, n+1):
+        for c in range(1, n+1):
+            add_clause([(r, c, v, False) for v in range(1, n+1)])
+
+    # Cell uniqueness: at most one value per cell
+    for r in range(1, n+1):
+        for c in range(1, n+1):
+            for vi in range(1, n):
+                for vj in range(vi+1, n+1):
+                    add_clause([(r, c, vi, True), (r, c, vj, True)])
+    # Row, Col, Block definedness and uniqueness follow identically
+\end{lstlisting}
