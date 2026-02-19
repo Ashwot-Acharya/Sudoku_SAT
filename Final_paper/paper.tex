@@ -3,9 +3,15 @@
 \usepackage{graphicx}
 \usepackage{geometry}
 \usepackage{braket}
-\usepackage{natbib}   
+\usepackage[authoryear]{natbib}
 \usepackage{url}
-\bibliographystyle{plain}
+\usepackage{algorithm}
+\usepackage{algorithmic}
+\usepackage{listings}
+\usepackage{subfigure}
+\bibliographystyle{plainnat}
+\let\cite\citep
+
 \geometry{a4paper, margin=1in}
 \usepackage{titlesec}
 \usepackage{tikz} 
@@ -24,9 +30,9 @@
 \hbadness=10000
 \begin{titlepage}
     \begin{center}
-      
+        % Title
         \Large\bfseries
-        SAT Based approach to solving Sudoku\\[2cm]
+        SAT Based Approach To Solving Sudoku\\[2cm]
         
         \normalsize
         THIRD YEAR PROJECT REPORT\\[2ex]
@@ -37,8 +43,9 @@
         
         \normalsize
         BY\\[2ex]
-        \textbf{Ashwot Acharya, Bishesh Bohora, Supreme Chaudhary, Lakki Thapa}\\[2cm]
+        \textbf{Ashwot Acharya, Bishesh Bohora, Supreme Chaudhary, Bishesh Bohora}\\[2cm]
         
+        \includegraphics[width=4cm]{graphs/logo.png}\\[2cm]
         
         DEPARTMENT OF MATHEMATICS\\
         KATHMANDU UNIVERSITY\\
@@ -47,30 +54,139 @@
         \vfill
     \end{center}
 \end{titlepage}
-\tableofcontents
+
+\thispagestyle{empty}
+
+\begin{center}
+    \textbf{\LARGE CERTIFICATION}
+\end{center}
+
+\vspace{1em}
+
+This project entitled ``\textbf{SAT Based Approach To Solving Sudoku}'' is carried out under our supervision for the specified entire period satisfactorily and is hereby certified as a work done by the following students:
+\begin{enumerate}
+    \item Ashwot Acharya
+    \item Bishesh Bohora 
+    \item Supreme Chaudhary
+    \item Lakki Thapa
+\end{enumerate}
+in partial fulfillment of the requirements for the degree of B.Sc. in Computational Mathematics, Department of Mathematics, Kathmandu University, Dhulikhel, Nepal.
+
+
+\vspace{3em}
+
+\noindent
+\begin{minipage}{0.45\textwidth}
+\rule{6cm}{0.5pt}\\
+\textbf{M.r K.B Manandhar }\\
+Assistant Professor\\
+Department of Mathematics,\\
+School of Science\\ Kathmandu University,\\
+Dhulikhel, Kavre, Nepal\\
+Date: August, 2025
+
+\end{minipage}
+
+
+\vspace{2.5em}
+
+\noindent
+\\ \\ 
+\textbf{APPROVED BY:}\\
+I hereby declare that the candidate qualifies to submit this report of \textbf{SAT Based Approach To Solving Sudoku} to the Department of Mathematics.
+\\
+\vspace{1.7em}
+\\
+\noindent
+\rule{6cm}{0.5pt}\\ \\
+\textbf{Head of Department }\\
+Department of Mathematics\\
+School of Science\\
+Kathmandu University\\
+Date: August, 2025
+
+\vspace{2em}
+
+\begin{center}
+   {\small ii}
+\end{center}
+\clearpage
+
+\clearpage
+
+\begin{center}
+    \textbf{\LARGE ACKNOWLEDGMENTS}
+\end{center}
+    First and foremost, we would like to thank our supervisor Mr K.B Manandhar sir for guiding us through this research project.
+Their feedback and suggestions helped us overcome numerous challenges and shaped
+our understanding of the subject matter.
+
 \newpage
-\section*{Abstract}
+
+\begin{abstract}
 Sudoku is a well-known puzzle whose generalized version can be formulated as a decision and search problem over an $n^2 \times n^2$ grid. From a computational perspective, generalized Sudoku is NP-complete, and finding a valid completion corresponds to solving a function problem in FNP. This project presents a Boolean satisfiability (SAT) based approach for solving generalized Sudoku instances by reducing the puzzle to a propositional formula in Conjunctive Normal Form (CNF).
 
-We formally encode the structural constraints of Sudoku—definedness and uniqueness across cells, rows, columns, and sub-grids—into Boolean variables of the form $x_{i,j,k}$, representing the assignment of digit $k$ to cell $(i,j)$. The resulting constraints are translated into CNF and expressed in DIMACS format, enabling compatibility with standard SAT solvers. We adopt an extended encoding strategy that introduces certain redundant clauses to improve propagation efficiency and conflict detection in modern Conflict-Driven Clause Learning (CDCL) solvers.
+We formally encode the structural constraints of Sudoku—definedness and uniqueness across cells, rows, columns, and sub-grids—into Boolean variables of the form $x_{i,j,k}$, representing the assignment of digit $k$ to cell $(i,j)$. The resulting constraints are translated into CNF and expressed in DIMACS format, enabling compatibility with standard SAT solvers. We adopt an optimized encoding strategy to improve propagation efficiency and conflict detection in modern Conflict-Driven Clause Learning (CDCL) solvers.
 
 The implementation consists of generating CNF files using Python, mapping logical variables to integer representations, and solving the instances using both existing SAT solvers and a basic SAT solver implemented in C. We also compare the SAT-based method with a classical backtracking approach to evaluate performance differences. Experimental observations demonstrate that SAT-based techniques provide a systematic and scalable framework for solving larger generalized Sudoku instances, highlighting the practical strength of reductions to SAT for combinatorial search problems.\newpage
+
+\end{abstract}
+\tableofcontents
+\newpage
+\section*{List of Acronyms}
+
+\begin{tabular}{ll}
+SAT   & Boolean Satisfiability Problem \\
+CNF   & Conjunctive Normal Form \\
+CDCL  & Conflict-Driven Clause Learning \\
+DPLL  & Davis--Putnam--Logemann--Loveland Algorithm \\
+DIMACS & Center for Discrete Mathematics and Theoretical Computer Science \\
+MRV   & Minimum Remaining Values \\
+VSIDS & Variable State Independent Decaying Sum \\
+UNSAT & Unsatisfiable \\
+SAT (result) & Satisfiable \\
+\end{tabular}
+\newpage
+
 \section{Introduction}
 \subsection{Sudoku}
 A puzzle in which a $n^2 \times n^2$ grid consisting of $n$ "$n \times n$" sub-grids is to be filled with numbers from $1$ \text{to} $n^2$ so that every row, column, and region contains only one instance of each number, $n \geq 1$.
-In a sudoku puzzle, few cells are already filled, those are called cues.
+In a sudoku puzzle, few cells are already filled, those are called clues.
 The \textbf{Sudoku Problem}  is to determine whether there exist a completion such that the forementioned conditions are satisfied.
 
 
 The most common format for sudoku is of $9  \times 9$ grid. In this project we worked upon larger variants. For arbitary positve integer n, we call it \textbf{Generalized Sudoku}.
 
+\begin{figure}[h]
+
+
+  \begin{minipage}{0.45\textwidth}
+    \centering
+  \includegraphics[width=0.8\textwidth]{graphs/unsolved.jpg}
+\end{minipage}
+\hfill
+\begin{minipage}{0.45\textwidth}
+    \centering
+  \includegraphics[width=0.8\textwidth]{graphs/solved.jpg}
+\end{minipage}
+
+  \caption{$9 \times 9 $ Sudoku and its solution  \cite{sudokueg}}
+\end{figure}   
 
 \subsubsection{Complexity of Generalized Sudoku Problem}
-The Partial Latin Square Completion problem was shown to be NP-complete \cite{Colbourn1984}. Yato and Seta \cite{Yato2003} demonstrated that Partial Latin Square can be parsimoniously reduced to Number Place (generalized Sudoku), thereby establishing the ASP-completeness of Sudoku, which captures the computational hardness of finding another solution. Because ASP-completeness implies NP-completeness, generalized Sudoku is NP-complete.
-Since Our Project also consists of finding a solution, we also consider  the FNP (as defined in \cite{Yato2003}) version of the problem.
+The Partial Latin Square Completion problem was shown to be NP-complete \cite{Colbourn1984}. Yato and Seta \cite{Yato2003} demonstrated that Partial Latin Square can be parsimoniously reduced to Number Place (generalized Sudoku), thereby establishing the ASP-completeness of Sudoku, which captures the computational hardness of finding another solution. Because ASP-completeness implies NP-completeness, generalized Sudoku is \textbf{NP-complete}.
 
 
-\subsection{The Boolean Satisfiaility Problem}
+\subsubsection{Sudoku as CSP}
+Sudoku can naturally be formulated as a Constraint Satisfaction
+Problem (CSP), where each cell is a variable, the domain consists
+of the numbers $\{1,\dots,n^2\}$, and the constraints enforce
+row, column, and subgrid consistency.
+Classical approaches solve this CSP using backtracking search
+\cite{RussellNorvig2010, Dechter2003}.
+
+
+\subsection{The Boolean Satisfiability Problem}
 In logic and computer science, the Boolean satisfiability problem (sometimes called propositional satisfiability problem and abbreviated SATISFIABILITY, SAT or B-SAT) asks whether there exists an interpretation that satisfies a given Boolean formula. In other words, it asks whether the formula's variables can be consistently replaced by the values TRUE or FALSE to make the formula evaluate to TRUE. If this is the case, the formula is called satisfiable, else unsatisfiable. \cite{wikiSAT}
 We refer it as SAT.\\
 $ a \vee \neg b $ is SATISFIABLE with $a = 1 $ and $b = 0$.\\ 
@@ -80,22 +196,24 @@ $a \wedge \neg a $ is UNSATISFIABLE .
 
 
 \subsubsection{Complexity of SAT}
-SAT is NP complete. In fact, it was the first problem to be known as such. As proved by Stephen Cook at the University of Toronto in 1971 and independently by Leonid Levin at the Russian Academy of Sciences in 1973. \cite{wikiSAT}.
-This project deals with finding out the assignments if they exist,  which for the general case is in FNP.
+SAT is NP complete. In fact, it was the first problem to be known as such. As proved by Stephen Cook \cite{Cook1971} at the University of Toronto in 1971 and independently by Leonid Levin at the Russian Academy of Sciences in 1973. \cite{wikiSAT}.
+
 
 
 
 
 
 \subsubsection{SAT Solvers}
-SAT Solvers are computer programs that check if there exist some assignment of boolean variables in the given problem such that it evaluates to True. SAT solvers also provide us the assignments. Therefore dealing with the search if satisfiable.
+SAT Solvers are computer programs or algorithms that check if there exist some assignment of boolean variables in the given problem such that it evaluates to True. SAT solvers also provide us the assignments. Therefore dealing with the search if satisfiable.
 
 
 
 \subsection{Justification for SAT approach}
+
 Since generalized Sudoku is NP-complete (and thus belongs to NP), it can be reduced in polynomial time to any other NP-complete problem, such as Boolean satisfiability (SAT).
 Note that forementioned complexity is for when n grows without bound, but in practice we have a finite grid. 
 This reduction provides a formal justification for using SAT solvers to find Sudoku solutions: by converting a Sudoku instance into an equivalent SAT instance, we can leverage modern SAT-solving algorithms to efficiently compute a valid completed grid. This approach is theoretically sound, because solving the SAT instance is guaranteed to yield a solution to the original Sudoku problem whenever one exists.
+It is also found SAT solving aids in efficient solving of CSPs.\cite{LARDEUX2020113243}
 
 
 
@@ -137,6 +255,7 @@ Our goal is to represent the constraints of the puzzle as boolean expression and
 \end{array}
 \]
 \caption{$4 \times 4$ Sudoku}
+\label{fig:44}
 \end{figure}
 
 
@@ -166,7 +285,6 @@ Each cell contains atleast one digit
 
 
 Each value appears atleast once in each row  
-\textbf{For Row}
 \[
 \textbf{$Row_d$} =
 \bigwedge_{i=1}^{n^2}
@@ -250,27 +368,28 @@ Each value appears at most once in every subgrid:
 \bigwedge_{a=0}^{n-1}
 \bigwedge_{b=0}^{n-1}
 \bigwedge_{k=1}^{n^2}
-\bigwedge_{\substack{(i_1,j_1),(i_2,j_2) \\ 1 \le i_1,j_1,i_2,j_2 \le n \\ (i_1,j_1) < (i_2,j_2)}}
+\bigwedge_{\substack{(i_1,j_1),(i_2,j_2) \\ 1 \le i_1,j_1,i_2,j_2 \le n \\ i_1 < i_2, j_1<j_2}}
 (\neg x_{an+i_1,\; bn+j_1,\; k}
  \lor
  \neg x_{an+i_2,\; bn+j_2,\; k})
 \]
 
-\subsubsection*{For Cues}
+\subsubsection*{For clues}
 
 If the puzzle contains a fixed entry $(i,j)=k$, it is encoded as a unit clause:
 
 \[
-\textbf{Cues} =
+\textbf{clues} =
 \bigwedge_{(i,j,k)\in G} x_{i,j,k}
 \]
 
+which forces them to be true.
 
 
 
 \subsubsection*{Example}
 
-For given $4 \times 4$ Sudoku in Figure 1, we introduce Boolean variables
+For given $4 \times 4$ Sudoku in Figure \ref{fig:44}, we introduce Boolean variables
 
 \[
 x_{i,j,k}
@@ -413,46 +532,50 @@ Each of these is added as a unit clause to the CNF formula.
 
 
 \subsubsection{Final Formula}
-
-
+We will be using the encoding proposed in \cite{SuSAT}.
+Therefore,
 The complete CNF encoding is:
 
 \[
-\Phi =
-\textbf{$Cell_d$} \land \textbf{$Cell_u$}
-\land \textbf{$Row_d$} \land \textbf{$Row_u$}
-\land \textbf{$Col_d$} \land \textbf{$Col_u$}
-\land \textbf{$Subgrid_d$} \land \textbf{$Subgrid_u$}
-\land \textbf{$Cues$}.
+\phi = \text{Clues} \Downarrow V^{+}
+\;\cup\;
+\left( \text{Cell}_{u} \cup \text{Row}_{u} \cup \text{Col}_{u} \cup \text{Subgrid}_{u} \right) \Downarrow V^{-}
+\;\cup\;
+\left( \text{Cell}_{d} \cup \text{Row}_{d} \cup \text{Col}_{d} \cup \text{Subgrid}_{d} \right) \downarrow V^{-}
 \]
 
+where,\\
+$V^+ = \text{Set of variables with true assignment}$\\
+$V^- = \text{Set of variables with false assignments}$\\ 
+$\Downarrow \text{eliminates clauses if they are true }$ \\
+$\downarrow \text{eliminates literals if they are false}$\\
+Note that each constraint here is treated as a set of clauses, the formula is in CNF.
+
+% \subsection{Encoding}
+
+% For the final formula we choose the extended encoding (See \cite{SuSAT}) where some clauses are redundant, the tests by \cite{SuSAT} show that this is the fastest encoding for solving sudoku puzzles. Furthermore, making the formula more explicit assists CDCL due to conflicts being detected earlier.
+% The other possible encodings which were compared in those tests are as follows:
+
+%    \[
+% \Phi =
+% \textbf{$Cell_d$} 
+% \land \textbf{$Row_u$}
+% \land  \textbf{$Col_u$}
+% \land  \textbf{$Subgrid_u$}
+% \land \textbf{$clues$}.
+% \]
+%  \[
+% \Phi =
+% \textbf{$Cell_d$} \land
+% \textbf{$Cell_u$} 
+% \land \textbf{$Row_u$}
+% \land  \textbf{$Col_u$}
+% \land  \textbf{$Subgrid_u$}
+% \land \textbf{$clues$}.
+% \]
 
 
-\subsection{Encoding}
-
-For the final formula we choose the extended encoding (See \cite{SuSAT}) where some clauses are redundant, the tests by \cite{SuSAT} show that this is the fastest encoding for solving sudoku puzzles. Furthermore, making the formula more explicit assists CDCL due to conflicts being detected earlier.
-The other possible encodings which were compared in those tests are as follows:
-
-   \[
-\Phi =
-\textbf{$Cell_d$} 
-\land \textbf{$Row_u$}
-\land  \textbf{$Col_u$}
-\land  \textbf{$Subgrid_u$}
-\land \textbf{$Cues$}.
-\]
- \[
-\Phi =
-\textbf{$Cell_d$} \land
-\textbf{$Cell_u$} 
-\land \textbf{$Row_u$}
-\land  \textbf{$Col_u$}
-\land  \textbf{$Subgrid_u$}
-\land \textbf{$Cues$}.
-\]
-
-
-All three formulas are Equisatisfiable.
+% All three formulas are Equisatisfiable.
 
 
 
@@ -460,9 +583,9 @@ All three formulas are Equisatisfiable.
 
 \subsection{Computer Representation}
 
-The sudoku will be first represented as a conventional array. %need to write it properly
+The sudoku is be first represented in a plain text file. 
 With the decided encoding, the problem will be converted to CNF, for which we use \textbf{DIMACS} format.
-\subsection{DIMACS CNF}
+\subsubsection{DIMACS Format}
 It is a textual representation of a formula in CNF form, where each line ending with  0 represents a clause. Each literal and its negation is represented by a positive and negative integer respectively.
 A DIMACS CNF file starts with a header p cnf (variables) (clauses) where (variables) and (clauses) are replaced with number of variables and clauses respectively. Any line beginning with c is a comment.
 The formula \[( x \vee y \vee \neg z ) \land (\neg x \vee \neg y )\] in DIMACS format would be 
@@ -471,45 +594,401 @@ The formula \[( x \vee y \vee \neg z ) \land (\neg x \vee \neg y )\] in DIMACS f
   1 2 3 0
   -1 -2 0
 \end{verbatim}
+where variables $x,y,z$ are represented by $1,2,3$.
 All encoded Sudoku Problem is written in DIMACS and stored as a .cnf file.
 
 
 \subsection{Mapping variables to integers}
+To obtain a valid DIMACS format each triplet (i,j,k), $1\leq i, j, k \leq n^2$ should be mapped to a positive integer.
+For this we used the following relation
+\[ 
+V(i, j, k) = (i - 1)n^4 + (j - 1)n^2 + k
+\]
+
+We also needed to get the sudoku assignments (i,j,k) from the satisfying assignments 
+
+Given a DIMACS variable number $V$, the inverse mapping
+$(i,j,k)$ can be recovered as follows:
+
+\[
+i =
+\left\lfloor
+\frac{V-1}{n^{4}}
+\right\rfloor
++ 1
+\]
+
+\[
+j =
+\left\lfloor
+\frac{(V-1) \bmod n^{4}}{n^{2}}
+\right\rfloor
++ 1
+\]
+
+\[
+k =
+\big((V-1) \bmod n^{2}\big) + 1.
+\]
 
 
 \subsection{Conversion to DIMACS using python}
+In the mathematical formulation we use indices $(i,j,k)$
+to denote row, column, and value respectively.
+In the implementation, we use the equivalent notation
+$(r,c,v)$ (row, column, value).Also The Sudoku grid is defined as
+an $n^2 \times n^2$ grid with subgrids of size $n \times n$.
+However, in the implementation we directly use $n$ to denote
+the grid dimension.
+
+
+
+For generating variables and decoding of assignments provided by the SAT solver, We used the relation above. And for generating clauses and literals we implemented the formulation using loops. See \textbf{Appendix A} for code.
+
+\subsection{Solution Using PySAT and Existing SAT solvers }
+
+
+First, we used the PySAT library in Python, which provides
+a unified interface to several modern SAT solvers.
+The generated clauses were added to a PySAT solver instance,
+and the solver was invoked to determine satisfiability. This was used for debugging of our conversion script.
+After verification, we used \textbf{Satch} as our primary solver with which further testing was done.
+
+If the formula is satisfiable, the solver returns a model,
+which is a satisfying assignment of all Boolean variables.
+Using the inverse mapping described earlier, each positive
+literal corresponding to $x_{i,j,k}$ was decoded to reconstruct
+the completed Sudoku grid.
 
 
 
 
-\subsection{Solution Using Existing SAT solvers and PySAT}
+
+\subsection{Implementation of CDCL}
+
+\subsubsection{Overview of The Algorithm}
+Modern SAT solvers typically use Conflict-Driven Clause Learning (CDCL),
+an extension of the DPLL procedure that improves search through conflict
+analysis and clause learning.
+
+The algorithm repeatedly:
+\begin{enumerate}
+\item selects a decision variable,
+\item performs unit propagation,
+\item analyzes conflicts to learn a new clause, and
+\item backjumps non-chronologically based on the learned clause.
+\end{enumerate}
+
+Clause learning enables additional unit propagations after backtracking,
+allowing CDCL to prune large parts of the search space.
+A high-level description follows \cite{junttila2020cdcl}.
+
+\begin{algorithm}
+\caption{Conflict-Driven Clause Learning (CDCL)}
+\label{alg:cdcl}
+\begin{algorithmic}[1]
+\REQUIRE CNF formula $\phi$
+\STATE $\tau \leftarrow \emptyset$ \COMMENT{Partial assignment}
+
+\WHILE{true}
+    \STATE $\tau \leftarrow$ unit-propagate($\phi, \tau$)
+    \IF{$\tau$ falsifies a clause}
+        \IF{decision level = 0}
+            \RETURN UNSAT
+        \ENDIF
+        \STATE $C \leftarrow$ analyze-conflict($\phi, \tau$)
+        \STATE $\phi \leftarrow \phi \land C$ \COMMENT{Learned clause}
+        \STATE backjump to decision level determined by $C$
+    \ELSE
+        \IF{all variables assigned}
+            \RETURN SAT
+        \ENDIF
+        \STATE start new decision level
+        \STATE choose unassigned literal $l$
+        \STATE $\tau \leftarrow \tau \cup \{l\}$ \COMMENT{Decision assignment}
+    \ENDIF
+\ENDWHILE
+\end{algorithmic}
+\end{algorithm}
 
 
+\subsubsection{Implementation}
+Our implementation follows the standard CDCL architecture:
+decision making, unit propagation, conflict detection,
+clause learning via resolution, and non-chronological backtracking.
 
-\subsection{Building a SAT solver in C}
+For guidance, we referred to the implementation of the
+SATCH SAT solver and adopted its overall control flow structure
+while keeping the design minimal.
 
-
-\subsubsection{CDCL }
-
-
-
-\subsubsection{Implementation of CDCL}
-
-
-
+The solver successfully handles small and medium-sized
+Sudoku instances, although it does not include advanced
+industrial optimizations such as VSIDS heuristics
+or clause database reduction.
+Find the code in \textbf{Appendix B}.
 
 \section{Comparison with Backtracking}
+\begin{figure}[h]
+  \centering
+  \includegraphics[width=0.7\textwidth]{graphs/plot_scaling.png}
+  \caption{Performance over different puzzles}
+  \label{fig:label}
+\end{figure}   
+
+Figure \ref{fig:label} shows mean solve time (log scale) for a SAT solver and a backtracking solver (MRV + forward checking) across increasing Sudoku sizes. The SAT solver scales steadily, remaining under one second even for 36×36 puzzles. In contrast, backtracking performs well on very small grids but scales poorly, becoming impractical beyond 16×16 and exceeding 10 minutes for larger puzzles. Overall, while backtracking is effective for small instances, SAT solving scales much more efficiently for larger Sudoku problems.
+
+
+The test was conducted with puzzles of other sizes and difficulty, the respective graphs are at \textbf{Appendix C}
 
 
 
-Graphs and stuffs go here
+
+\section{Conclusion}
+
+This project investigated the use of Boolean satisfiability (SAT) solving as an approach to solving Sudoku puzzles by encoding the problem as a formula in conjunctive normal form (CNF). The Sudoku constraints were translated into logical clauses, and solutions were obtained using both existing SAT solvers and a custom implementation of a Conflict-Driven Clause Learning (CDCL) solver.
+
+Experimental results show that SAT-based solving scales more effectively than classical backtracking approaches, particularly as puzzle size increases. While backtracking performs efficiently on small grids, its performance degrades rapidly for larger instances. In contrast, SAT solving maintains stable performance due to efficient unit propagation, clause learning, and non-chronological backtracking. These mechanisms allow large portions of the search space to be pruned systematically.
+
+The custom CDCL implementation successfully solved small and medium-sized Sudoku instances, demonstrating the core principles of modern SAT solving. However, it lacks several advanced optimizations used in industrial solvers, such as dynamic branching heuristics and clause database management, which limits performance on larger or more complex instances.
+
+
+
+\newpage
+\appendix
+\renewcommand{\thesection}{Appendix \Alph{section}}
+
+\section{}
+\label{app:codeA}
+Encoding:
+\begin{lstlisting}[language=Python]
+def encode(n, puzzle):
+   
+    box = int(math.sqrt(n))
+
+   
+    V_plus  = set()
+    V_minus = set()
+
+    fixed = {}
+    for r in range(1, n + 1):
+        for c in range(1, n + 1):
+            v = puzzle[r - 1][c - 1]
+            if v != 0:
+                fixed[(r, c)] = v
+                V_plus.add((r, c, v))
+
+    def luc(i):
+        return ((i - 1) // box) * box + 1
+
+    for (r, c, v) in list(V_plus):
+        for v2 in range(1, n + 1):
+            if v2 != v:
+                V_minus.add((r, c, v2))
+        for c2 in range(1, n + 1):
+            if c2 != c:
+                V_minus.add((r, c2, v))
+        for r2 in range(1, n + 1):
+            if r2 != r:
+                V_minus.add((r2, c, v))
+        br, bc = luc(r), luc(c)
+        for r2 in range(br, br + box):
+            for c2 in range(bc, bc + box):
+                if (r2, c2) != (r, c):
+                    V_minus.add((r2, c2, v))
+
+    V0 = set()
+    for r in range(1, n + 1):
+        for c in range(1, n + 1):
+            for v in range(1, n + 1):
+                triple = (r, c, v)
+                if triple not in V_plus and triple not in V_minus:
+                    V0.add(triple)
+
+    V0_list  = sorted(V0)
+    var_map  = {triple: idx + 1 for idx, triple in enumerate(V0_list)}
+    num_vars = len(var_map)
+
+    def lit(r, c, v, neg=False):
+       
+        if (r, c, v) in V_plus:
+            return "FALSE" if neg else "TRUE"
+        if (r, c, v) in V_minus:
+            return "TRUE" if neg else "FALSE"
+        idx = var_map[(r, c, v)]
+        return -idx if neg else idx
+
+    clauses = []
+
+    def add_clause(literals):
+        resolved = []
+        for (r, c, v, neg) in literals:
+            l = lit(r, c, v, neg)
+            if l == "TRUE":
+                return
+            if l == "FALSE":
+                continue
+            resolved.append(l)
+        if resolved:
+            clauses.append(resolved)
+
+    for r in range(1, n + 1):
+        for c in range(1, n + 1):
+            add_clause([(r, c, v, False) for v in range(1, n + 1)])
+
+    for r in range(1, n + 1):
+        for c in range(1, n + 1):
+            for vi in range(1, n):
+                for vj in range(vi + 1, n + 1):
+                    add_clause([(r, c, vi, True), (r, c, vj, True)])
+
+    for r in range(1, n + 1):
+        for v in range(1, n + 1):
+            add_clause([(r, c, v, False) for c in range(1, n + 1)])
+
+    for r in range(1, n + 1):
+        for v in range(1, n + 1):
+            for ci in range(1, n):
+                for cj in range(ci + 1, n + 1):
+                    add_clause([(r, ci, v, True), (r, cj, v, True)])
+
+    for c in range(1, n + 1):
+        for v in range(1, n + 1):
+            add_clause([(r, c, v, False) for r in range(1, n + 1)])
+
+    for c in range(1, n + 1):
+        for v in range(1, n + 1):
+            for ri in range(1, n):
+                for rj in range(ri + 1, n + 1):
+                    add_clause([(ri, c, v, True), (rj, c, v, True)])
+
+    for roffs in range(0, n, box):
+        for coffs in range(0, n, box):
+            for v in range(1, n + 1):
+                add_clause([
+                    (roffs + dr, coffs + dc, v, False)
+                    for dr in range(1, box + 1)
+                    for dc in range(1, box + 1)
+                ])
+
+    for roffs in range(0, n, box):
+        for coffs in range(0, n, box):
+            for v in range(1, n + 1):
+                cells = [
+                    (roffs + dr, coffs + dc)
+                    for dr in range(1, box + 1)
+                    for dc in range(1, box + 1)
+                ]
+                for i in range(len(cells)):
+                    for j in range(i + 1, len(cells)):
+                        r1, c1 = cells[i]
+                        r2, c2 = cells[j]
+                        add_clause([(r1, c1, v, True), (r2, c2, v, True)])
+
+    return clauses, num_vars, var_map, V0_list
 
 
 
 
 
+\end{lstlisting}
+Decoding model returned by SAT solver
+\begin{lstlisting}[language=Python]
+  def decode_solution(assignment, puzzle_path):
+    sys.path.insert(0, SCRIPT_DIR)
+    from sudoku_to_cnf import read_puzzle, encode
+
+    n, puzzle    = read_puzzle(puzzle_path)
+    _, _, var_map, _ = encode(n, puzzle)
+    inv_map      = {idx: triple for triple, idx in var_map.items()}
+    true_set     = set(assignment)
+
+    grid = [row[:] for row in puzzle]
+    for var_idx in true_set:
+        if var_idx in inv_map:
+            r, c, v = inv_map[var_idx]
+            grid[r - 1][c - 1] = v
+    return grid, n
+
+def save_solution(grid, n, basename, sat_time, assignment):
+    out = os.path.join(SOL_DIR, basename + "_SAT_solved.txt")
+    with open(out, "w+") as f:
+        f.write(f"SIZE {n}\nSOLVE_TIME_SEC {sat_time:.4f}\n")
+        f.write("METHOD SAT\nSTATUS SOLVED\nSOLUTION\n")
+        for row in grid:
+            f.write(" ".join(str(v) for v in row) + "\n")
+        for x in assignment: 
+            f.write(str(x))
+    return out
+\end{lstlisting}
+\newpage
+\section{}
+\label{app:codeA}
+
+\begin{lstlisting}[language=C]
 
 
+static int solve(void) {
+    solver.level = 0;
+    for (;;) {
+        int conflict = propagate();
+        if (conflict >= 0) {
+            if (solver.level == 0) return UNSAT;
+            int bt = analyze(conflict);
+            backtrack(bt);
+            continue;
+        }
+        int var = decide();
+        if (var == 0) return SAT;
+        solver.level++;
+        assign(var, solver.level, -1);
+    }
+}
+  
+\end{lstlisting}
+\newpage
+\section{ }
+\label{app:graphs}
+\begin{figure}[H]
+\centering
+
+
+
+\begin{subfigure}
+\centering
+\includegraphics[width=0.6\linewidth]{graphs/line_4x4.png}
+\end{subfigure}
+
+
+\begin{subfigure}
+\centering
+\includegraphics[width=0.6\linewidth]{graphs/line_16x16.png}
+\end{subfigure}
+\begin{subfigure}
+\centering
+\includegraphics[width=0.6\linewidth]{graphs/line_36x36.png}
+\end{subfigure}
+\end{figure}
+
+\newpage
+
+\begin{figure}
+\centering
+\begin{subfigure}
+\centering
+\includegraphics[width=0.6\linewidth]{graphs/line_17-clue.png}
+\caption{17-clue puzzle}
+\end{subfigure}
+\begin{subfigure}
+\centering
+\includegraphics[width=0.6\linewidth]{graphs/line_20plus-clue.png}
+\end{subfigure}
+
+\caption{Performance comparison of SAT solver and backtracking solver across Sudoku sizes and clue densities.}
+\label{fig:performance-graphs}
+\end{figure}
+
+\clearpage
+\thispagestyle{plain}  
 
 \bibliography{references}
 

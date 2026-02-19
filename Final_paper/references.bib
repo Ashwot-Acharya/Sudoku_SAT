@@ -8,7 +8,7 @@
 }
 
 
-@techreport{Colbourn1984,
+@article{Colbourn1984,
    abstract = {Completing partial Latin squares is shown to be NP-complete. Classical embedding techniques of Hall and Ryser underly a reduction from partitioning tripartite graphs into triangles. This in turn is shown to be NP-complete using a recent result of Holyer.},
    author = {Charles J Colbourn},
    title = {THE COMPLEXITY OF COMPLETING PARTIAL LATIN SQUARES}
@@ -29,24 +29,20 @@
 	urldate = {2016-06-18},
 	year = 2003
 }
-@techreport{SuSAT,
+@article{SuSAT,
    abstract = {Sudoku is a very simple and well-known puzzle that has achieved international popularity in the recent past. This paper addresses the problem of encoding Sudoku puzzles into conjunc-tive normal form (CNF), and subsequently solving them using polynomial-time propositional satisfiability (SAT) inference techniques. We introduce two straightforward SAT encodings for Sudoku: the minimal encoding and the extended encoding. The minimal encoding suffices to characterize Sudoku puzzles, whereas the extended encoding adds redundant clauses to the minimal encoding. Experimental results demonstrate that, for thousands of very hard puzzles, inference techniques struggle to solve these puzzles when using the minimal encoding. However, using the extended encoding, unit propagation is able to solve about half of our set of puzzles. Nonetheless, for some puzzles more sophisticated inference techniques are required.},
    author = {Inês Lynce and Joël Ouaknine},
    title = {Sudoku as a SAT Problem}
 }
-@techreport{Susat2,
-   abstract = {A Sudoku puzzle can be regarded as a propositional SAT problem. Various encodings are known for encoding Sudoku as a Con-junctive Normal Form(CNF) formula. Using these encodings for large Sudoku puzzles, however, generates too many clauses, which impede the performance of state-of-the-art SAT solvers. This paper presents an optimized CNF encoding in order to deal with large instances of Sudoku puzzles. We use fixed cells in Sudoku to remove obvious redundancies during the encoding phase. This results in reducing the number of clauses in the CNF encoding and a significant speedup in the SAT solving time.},
-   author = {Gihwon Kwon and Himanshu Jain},
-   title = {Optimized CNF Encoding for Sudoku Puzzles}
-}
-@techreport{Hoexum2020,
+
+@article{Hoexum2020,
    abstract = {In 2003 it was shown by Takayuki Yato that the sudoku puzzle is an NP-complete and ASP-complete problem. The proof provided in this paper involved a reduction from the Latin Square Completion problem, which is quite similar to a sudoku puzzle. However, as the paper was not solely focused on the sudoku puzzle, the formulation of the proof was short and not very intuitive. This paper will describe the method of proof in more detail and give more context, as to make it more understandable. Additionally, because there has not been much research done into other ways to prove the NP-and ASP-completeness of the sudoku puzzle, a different approach to the proof is explored. After this, the solving procedure is explained and the performances of different solving algorithms are compared to determine which is the most efficient method for solving a sudoku puzzle.},
    author = {Eline Sophie Hoexum},
    keywords = {ASP-completeness,NP-completeness,complexity,solving algorithm,sudoku puzzle},
    title = {Revisiting the proof of the complexity of the sudoku puzzle},
    year = {2020}
 }
-@techReport{Thesis2022,
+@article{Thesis2022,
    author = {Bachelor Thesis and Sebastian Schlachter},
    title = {Encoding Diverse Sudoku Variants as SAT Problems},
    url = {https://ai.dmi.unibas.ch/},
@@ -67,4 +63,37 @@
   journal={Proceedings of the Third Annual ACM Symposium on Theory of Computing (STOC)},
   pages={151--158},
   year={1971}
+}
+@book{RussellNorvig2010,
+  author = {Stuart Russell and Peter Norvig},
+  title = {Artificial Intelligence: A Modern Approach},
+  edition = {3rd},
+  year = {2010},
+  publisher = {Prentice Hall}
+}
+@misc{sudokueg,
+author = "Sanidway Arizona",
+howpublished = {\url{https://sandiway.arizona.edu/sudoku/examples.html}}
+
+}
+@article{LARDEUX2020113243,
+title = {Solving complex problems using model transformations: from set constraint modeling to SAT instance solving},
+journal = {Expert Systems with Applications},
+volume = {149},
+pages = {113243},
+year = {2020},
+issn = {0957-4174},
+doi = {https://doi.org/10.1016/j.eswa.2020.113243},
+url = {https://www.sciencedirect.com/science/article/pii/S0957417420300695},
+author = {Frédéric Lardeux and Éric Monfroy and Eduardo Rodriguez-Tello and Broderick Crawford and Ricardo Soto},
+keywords = {Model transformations, Constraint programming, Set constraints, SAT encoding, Combinatorial problem},
+abstract = {On the one hand, solvers for the propositional satisfiability problem (SAT) can deal with huge instances composed of millions of variables and clauses. On the other hand, Constraint Satisfaction Problems (CSP) can model problems as constraints over a set of variables with non-empty domains. They require combinatorial search methods as well as heuristics to be solved in a reasonable time. In this article, we present a technique that benefits from both expressive CSP modeling and efficient SAT solving. We model problems as CSP set constraints. Then, a propagation algorithm reduces the domains of variables by removing values that cannot participate in any valid assignment. The reduced CSP set constraints are transformed into a set of suitable SAT instances. They may be simplified by a preprocessing method before applying a standard SAT solver for computing their solutions. The practical usefulness of this technique is illustrated with two well-known problems: a) the Social Golfer, and b) the Sports Tournament Scheduling. We obtained competitive results either compared with ad hoc solvers or with hand-written SAT instances. Compared with direct SAT modeling, the proposed technique offers higher expressiveness, is less error-prone, and is relatively simpler to apply. The automatically generated propositional satisfiability instances are rather small in terms of clauses and variables. Hence, applying the constraint propagation phase, even huge instances of our problems can be tackled and efficiently solved.}
+}
+
+@misc{junttila2020cdcl,
+  author = {Junttila, Tommi},
+  title = {Conflict-Driven Clause Learning (CDCL) SAT Solvers},
+  year = {2020},
+  url = {https://users.aalto.fi/~tjunttil/2020-DP-AUT/notes-sat/cdcl.html},
+  note = {Accessed: 2026-02-19}
 }
