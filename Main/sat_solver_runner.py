@@ -1,13 +1,3 @@
-"""
-sat_solver_runner.py
-Feeds a CNF file to satch (or minisat/picosat) and decodes the solution.
-
-SATCH-specific fixes:
-  - Check return code first: 10=SAT, 20=UNSAT (don't rely on string matching)
-  - Parse "v" lines correctly, skipping 0-terminators
-  - "s UNSATISFIABLE" contains "SATISFIABLE" as substring — check UNSAT first
-"""
-
 import os
 import subprocess
 import argparse
@@ -140,13 +130,15 @@ def decode_solution(assignment, puzzle_path):
 
 # ── save ───────────────────────────────────────────────────────────────────────
 
-def save_solution(grid, n, basename, sat_time):
+def save_solution(grid, n, basename, sat_time, assignment):
     out = os.path.join(SOL_DIR, basename + "_SAT_solved.txt")
-    with open(out, "w") as f:
+    with open(out, "w+") as f:
         f.write(f"SIZE {n}\nSOLVE_TIME_SEC {sat_time:.4f}\n")
         f.write("METHOD SAT\nSTATUS SOLVED\nSOLUTION\n")
         for row in grid:
             f.write(" ".join(str(v) for v in row) + "\n")
+        for x in assignment: 
+            f.write(str(x))
     return out
 
 
@@ -169,7 +161,7 @@ def solve_cnf(cnf_path, solver, verbose=True, timeout=3600):
         print(f"  SAT {os.path.basename(cnf_path)} ...", end=" ", flush=True)
 
     sat, assignment, elapsed = run_solver(solver, cnf_path, timeout=timeout)
-
+    print(assignment)
     if not sat:
         if verbose:
             print(f"✗ UNSAT/ERROR ({elapsed:.3f}s)")
@@ -184,7 +176,7 @@ def solve_cnf(cnf_path, solver, verbose=True, timeout=3600):
 
     try:
         grid, n  = decode_solution(assignment, puzzle_path)
-        sol_path = save_solution(grid, n, basename, elapsed)
+        sol_path = save_solution(grid, n, basename, elapsed, assignment) 
         if verbose:
             print(f"✓ {elapsed:.3f}s → {os.path.basename(sol_path)}")
         return sol_path, elapsed
