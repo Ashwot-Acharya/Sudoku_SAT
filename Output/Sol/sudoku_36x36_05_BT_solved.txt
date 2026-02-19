@@ -1,0 +1,4 @@
+SIZE 36
+SOLVE_TIME_SEC >600  (timeout at 10 min)
+METHOD Optimized_Backtracking
+STATUS TIMEOUT

@@ -1,0 +1,8 @@
+SIZE 4
+SOLVE_TIME_SEC 0.000112
+METHOD Optimized_Backtracking
+SOLUTION
+4 3 2 1
+1 2 3 4
+2 1 4 3
+3 4 1 2
