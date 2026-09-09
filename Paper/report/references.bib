@@ -11,7 +11,12 @@
 @article{Colbourn1984,
    abstract = {Completing partial Latin squares is shown to be NP-complete. Classical embedding techniques of Hall and Ryser underly a reduction from partitioning tripartite graphs into triangles. This in turn is shown to be NP-complete using a recent result of Holyer.},
    author = {Charles J Colbourn},
-   title = {THE COMPLEXITY OF COMPLETING PARTIAL LATIN SQUARES}
+   title = {THE COMPLEXITY OF COMPLETING PARTIAL LATIN SQUARES},
+   journal = {Discrete Applied Mathematics},
+   volume = {8},
+   number = {1},
+   pages = {25--30},
+   year = {1984}
 }
 
 @article{Yato2003,
@@ -20,7 +25,7 @@
   
 	title = {Complexity and Completeness of Finding Another solution and its Application to Puzzles},
 	author = {Takayushi Yato},
-	
+	journal = {Master's Thesis, University of Tokyo},
 	date_added = {2016-06-18},
 	date_published = {2003-02-11},
 	urls = {http://www-imai.is.s.u-tokyo.ac.jp/{\~{}}yato/data2/MasterThesis.pdf},
@@ -29,10 +34,12 @@
 	urldate = {2016-06-18},
 	year = 2003
 }
-@article{SuSAT,
+@inproceedings{SuSAT,
    abstract = {Sudoku is a very simple and well-known puzzle that has achieved international popularity in the recent past. This paper addresses the problem of encoding Sudoku puzzles into conjunc-tive normal form (CNF), and subsequently solving them using polynomial-time propositional satisfiability (SAT) inference techniques. We introduce two straightforward SAT encodings for Sudoku: the minimal encoding and the extended encoding. The minimal encoding suffices to characterize Sudoku puzzles, whereas the extended encoding adds redundant clauses to the minimal encoding. Experimental results demonstrate that, for thousands of very hard puzzles, inference techniques struggle to solve these puzzles when using the minimal encoding. However, using the extended encoding, unit propagation is able to solve about half of our set of puzzles. Nonetheless, for some puzzles more sophisticated inference techniques are required.},
    author = {Inês Lynce and Joël Ouaknine},
-   title = {Sudoku as a SAT Problem}
+   title = {Sudoku as a SAT Problem},
+   booktitle = {Proceedings of the 9th International Symposium on Artificial Intelligence and Mathematics (ISAIM)},
+   year = {2006}
 }
 
 @article{Hoexum2020,
@@ -53,7 +60,8 @@
 @misc{wikiSAT,
    author = "Wikipedia",
    title = "{Boolean satisfiability problem} --- {W}ikipedia{,} The Free Encyclopedia",
-   howpublished = {\url{http://en.wikipedia.org/w/index.php?title=Boolean\%20satisfiability\%20problem&oldid=1335700096}},
+   year = {2024},
+   howpublished = {\url{http://en.wikipedia.org/w/index.php?title=Boolean\%20satisfiability\%20problem\&oldid=1335700096}},
  }
 
 
@@ -73,6 +81,8 @@
 }
 @misc{sudokueg,
 author = "Sanidway Arizona",
+title = {Sudoku Examples and Solutions},
+year = {2024},
 howpublished = {\url{https://sandiway.arizona.edu/sudoku/examples.html}}
 
 }
@@ -96,4 +106,160 @@ abstract = {On the one hand, solvers for the propositional satisfiability proble
   year = {2020},
   url = {https://users.aalto.fi/~tjunttil/2020-DP-AUT/notes-sat/cdcl.html},
   note = {Accessed: 2026-02-19}
+}
+
+@inproceedings{KwonJain2006,
+  title={Optimized {CNF} Encoding for {Sudoku} Puzzles},
+  author={Kwon, Gihwon and Jain, Himanshu},
+  booktitle={13th International Conference on Logic for Programming, Artificial Intelligence and Reasoning (LPAR)},
+  note={Short paper},
+  year={2006},
+  url={http://www.cs.cmu.edu/~hjain/papers/sudoku-as-SAT.pdf}
+}
+
+@misc{Masulovic2022,
+  title={Deducibility in {Sudoku}},
+  author={Mašulović, Dragan},
+  howpublished={arXiv preprint arXiv:2212.01053},
+  year={2022},
+  url={https://arxiv.org/abs/2212.01053}
+}
+
+@article{Wilcoxon1945,
+  title={Individual comparisons by ranking methods},
+  author={Wilcoxon, Frank},
+  journal={Biometrics Bulletin},
+  volume={1},
+  pages={80--83},
+  year={1945}
+}
+
+@article{Friedman1937,
+  title={The use of ranks to avoid the assumptions of normality implicit in the analysis of variance},
+  author={Friedman, Milton},
+  journal={Journal of the American Statistical Association},
+  volume={32},
+  number={200},
+  pages={675--701},
+  year={1937}
+}
+
+@book{Kendall1948,
+  title={Rank Correlation Methods},
+  author={Kendall, Maurice G.},
+  publisher={Griffin},
+  year={1948},
+  address={London}
+}
+
+@article{DPLL1962,
+  title={A machine program for theorem-proving},
+  author={Davis, Martin and Logemann, George and Loveland, Donald},
+  journal={Communications of the ACM},
+  volume={5},
+  number={7},
+  pages={394--397},
+  year={1962},
+  publisher={ACM}
+}
+
+@inproceedings{GRASP1996,
+  title={{GRASP}---{A} New Search Algorithm for Satisfiability},
+  author={Marques-Silva, Jo{\~a}o P. and Sakallah, Karem A.},
+  booktitle={Proceedings of the 1996 IEEE/ACM International Conference on Computer-Aided Design (ICCAD)},
+  pages={220--227},
+  year={1996},
+  organization={IEEE},
+  doi={10.1109/ICCAD.1996.569607}
+}
+
+@inproceedings{Chaff2001,
+  title={Chaff: Engineering an Efficient {SAT} Solver},
+  author={Moskewicz, Matthew W. and Madigan, Conor F. and Zhao, Ying and Zhang, Lintao and Malik, Sharad},
+  booktitle={Proceedings of the 38th Design Automation Conference (DAC)},
+  pages={530--535},
+  year={2001},
+  organization={ACM}
+}
+
+@inproceedings{MiniSat2003,
+  title={An Extensible {SAT}-Solver},
+  author={E{\'e}n, Niklas and S{\"o}rensson, Niklas},
+  booktitle={Proceedings of the 6th International Conference on Theory and Applications of Satisfiability Testing (SAT)},
+  series={Lecture Notes in Computer Science},
+  volume={2919},
+  pages={502--518},
+  year={2003},
+  publisher={Springer}
+}
+
+@inproceedings{Sinz2005,
+  title={Towards an Optimal {CNF} Encoding of Boolean Cardinality Constraints},
+  author={Sinz, Carsten},
+  booktitle={Proceedings of the 11th International Conference on Principles and Practice of Constraint Programming (CP)},
+  series={Lecture Notes in Computer Science},
+  volume={3709},
+  pages={827--831},
+  year={2005},
+  publisher={Springer}
+}
+
+@incollection{Weber2005,
+  title={A {SAT}-based Sudoku Solver},
+  author={Weber, Tjark},
+  booktitle={Proc. Tenth Int. Workshop on Satisfiability Modulo Theories (SMT) / SWP},
+  year={2005}
+}
+
+@incollection{Simonis2005,
+  title={{AER: A CP Model for Sudoku}},
+  author={Simonis, Helmut},
+  booktitle={{CP2005} Workshop on Modeling and Reformulation of CSPs},
+  year={2005}
+}
+
+@article{McGuire2014,
+  title={There is no {16}-Clue {Sudoku}: Solving the {Sudoku} Minimum Number of Clues Problem via Hitting Set Enumeration},
+  author={McGuire, Gary and Tugemann, Bastian and Civario, Gilles},
+  journal={Experimental Mathematics},
+  volume={23},
+  number={2},
+  pages={190--217},
+  year={2014},
+  publisher={Taylor \& Francis},
+  doi={10.1080/10586458.2013.870056}
+}
+
+@misc{EppsteinZhang2026,
+  title={Sudoku grids that require many clues},
+  author={Eppstein, David and Zhang, Linglong},
+  howpublished={arXiv preprint arXiv:2607.05728},
+  year={2026},
+  url={https://arxiv.org/abs/2607.05728}
+}
+
+@article{DemaineFewestClues,
+  title={The Fewest Clues Problem},
+  author={Demaine, Erik D. and Fermi Ma and Schvartzman, Ariel and Waingarten, Erik and Aaronson, Scott},
+  journal={Theoretical Computer Science},
+  volume={748},
+  pages={28--39},
+  year={2018},
+  publisher={Elsevier},
+  doi={10.1016/j.tcs.2018.01.020}
+}
+
+@misc{Satch,
+  author={Biere, Armin},
+  title={{SATCH}: {A} {SAT} Solver Written in {C}},
+  year={2021},
+  howpublished={\url{https://github.com/arminbiere/satch}},
+  note={Version 0.5.6rc, Copyright (c) 2021 Armin Biere, JKU Linz}
+}
+
+@book{Dechter2003,
+  title={Constraint Processing},
+  author={Dechter, Rina},
+  year={2003},
+  publisher={Morgan Kaufmann}
 }

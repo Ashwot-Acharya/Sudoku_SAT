@@ -1,0 +1,49 @@
+\contentsline {section}{\numberline {1}Introduction}{5}{section.1}%
+\contentsline {subsection}{\numberline {1.1}Sudoku}{5}{subsection.1.1}%
+\contentsline {subsubsection}{\numberline {1.1.1}Complexity of Generalized Sudoku Problem}{5}{subsubsection.1.1.1}%
+\contentsline {subsubsection}{\numberline {1.1.2}Sudoku as CSP}{5}{subsubsection.1.1.2}%
+\contentsline {subsection}{\numberline {1.2}The Boolean Satisfiability Problem}{6}{subsection.1.2}%
+\contentsline {subsubsection}{\numberline {1.2.1}Complexity of SAT}{6}{subsubsection.1.2.1}%
+\contentsline {subsubsection}{\numberline {1.2.2}SAT Solvers}{6}{subsubsection.1.2.2}%
+\contentsline {subsection}{\numberline {1.3}Justification for SAT approach}{6}{subsection.1.3}%
+\contentsline {section}{\numberline {2}Mathematical Formulation}{7}{section.2}%
+\contentsline {subsection}{\numberline {2.1}Conjunctive Normal Form}{7}{subsection.2.1}%
+\contentsline {subsection}{\numberline {2.2}Representation of Sudoku As Boolean Expression (CNF)}{7}{subsection.2.2}%
+\contentsline {subsubsection}{\numberline {2.2.1}Definedness}{7}{subsubsection.2.2.1}%
+\contentsline {subsubsection}{\numberline {2.2.2}Uniqueness}{8}{subsubsection.2.2.2}%
+\contentsline {subsubsection}{\numberline {2.2.3}Final Formula}{10}{subsubsection.2.2.3}%
+\contentsline {section}{\numberline {3}Implementation}{11}{section.3}%
+\contentsline {subsection}{\numberline {3.1}Computer Representation}{11}{subsection.3.1}%
+\contentsline {subsubsection}{\numberline {3.1.1}DIMACS Format}{11}{subsubsection.3.1.1}%
+\contentsline {subsection}{\numberline {3.2}Mapping variables to integers}{11}{subsection.3.2}%
+\contentsline {subsection}{\numberline {3.3}Solution Using SAT Solvers}{11}{subsection.3.3}%
+\contentsline {subsection}{\numberline {3.4}Dual CNF Encoding}{12}{subsection.3.4}%
+\contentsline {subsubsection}{\numberline {3.4.1}Naive (Full) Encoding $\phi $}{12}{subsubsection.3.4.1}%
+\contentsline {subsubsection}{\numberline {3.4.2}Compact Encoding $\phi '$}{12}{subsubsection.3.4.2}%
+\contentsline {section}{\numberline {4}Experimental Setup}{12}{section.4}%
+\contentsline {subsection}{\numberline {4.1}Dataset}{12}{subsection.4.1}%
+\contentsline {subsection}{\numberline {4.2}Benchmark Protocol}{13}{subsection.4.2}%
+\contentsline {subsection}{\numberline {4.3}Metrics}{13}{subsection.4.3}%
+\contentsline {section}{\numberline {5}Results}{13}{section.5}%
+\contentsline {subsection}{\numberline {5.1}Solver Performance (Solve-Only Time)}{13}{subsection.5.1}%
+\contentsline {subsection}{\numberline {5.2}End-to-End Performance (Encoding + Solve)}{14}{subsection.5.2}%
+\contentsline {subsection}{\numberline {5.3}CNF Dual Encoding Comparison}{15}{subsection.5.3}%
+\contentsline {subsection}{\numberline {5.4}Scaling Visualization}{15}{subsection.5.4}%
+\contentsline {section}{\numberline {6}Statistical Analysis}{15}{section.6}%
+\contentsline {subsection}{\numberline {6.1}Methodology}{15}{subsection.6.1}%
+\contentsline {subsection}{\numberline {6.2}Wilcoxon Signed-Rank Test: BT vs.\ SAT Compact}{18}{subsection.6.2}%
+\contentsline {subsection}{\numberline {6.3}Friedman Test: Multi-Solver Comparison}{18}{subsection.6.3}%
+\contentsline {subsection}{\numberline {6.4}Solution Correctness}{19}{subsection.6.4}%
+\contentsline {section}{\numberline {7}Discussion}{19}{section.7}%
+\contentsline {subsection}{\numberline {7.1}Encoding Optimization is Critical}{19}{subsection.7.1}%
+\contentsline {subsection}{\numberline {7.2}SAT vs.\ Backtracking: A Size-Dependent Trade-off}{19}{subsection.7.2}%
+\contentsline {subsection}{\numberline {7.3}Encoding Time Dominates E2E}{19}{subsection.7.3}%
+\contentsline {subsection}{\numberline {7.4}Statistical Rigor}{20}{subsection.7.4}%
+\contentsline {subsection}{\numberline {7.5}Limitations}{20}{subsection.7.5}%
+\contentsline {section}{\numberline {8}Conclusion}{20}{section.8}%
+\contentsline {section}{\numberline {A}Compact Encoding (sudoku\_to\_cnf.py)}{22}{appendix.A}%
+\contentsline {section}{\numberline {B}Naive Encoding (dual\_encoder.py)}{24}{appendix.B}%
+\contentsline {section}{\numberline {C}Solution Decoder}{26}{appendix.C}%
+\contentsline {section}{\numberline {D}CDCL Solver Core (C)}{27}{appendix.D}%
+\contentsline {section}{\numberline {E}Benchmark Orchestration (unified\_benchmark.py)}{27}{appendix.E}%
+\contentsline {section}{\numberline {F}Statistical Analysis (statistical\_analysis.py)}{28}{appendix.F}%

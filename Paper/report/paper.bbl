@@ -1,64 +1,135 @@
-% $ biblatex auxiliary file $
-% $ biblatex bbl format version 3.3 $
-% Do not modify the above lines!
-%
-% This is an auxiliary file used by the 'biblatex' package.
-% This file may safely be deleted. It will be recreated by
-% biber as required.
-%
-\begingroup
-\makeatletter
-\@ifundefined{ver@biblatex.sty}
-  {\@latex@error
-     {Missing 'biblatex' package}
-     {The bibliography requires the 'biblatex' package.}
-      \aftergroup\endinput}
-  {}
-\endgroup
+\begin{thebibliography}{23}
+\providecommand{\natexlab}[1]{#1}
+\providecommand{\url}[1]{\texttt{#1}}
+\expandafter\ifx\csname urlstyle\endcsname\relax
+  \providecommand{\doi}[1]{doi: #1}\else
+  \providecommand{\doi}{doi: \begingroup \urlstyle{rm}\Url}\fi
 
+\bibitem[Arizona(2024)]{sudokueg}
+Sanidway Arizona.
+\newblock Sudoku examples and solutions.
+\newblock \url{https://sandiway.arizona.edu/sudoku/examples.html}, 2024.
 
-\refsection{0}
-  \datalist[entry]{nyt/global//global/global/global}
-    \entry{HuthRyan2004}{book}{}{}
-      \name{author}{2}{}{%
-        {{un=0,uniquepart=base,hash=7ad042fb880cc734fb7b1ddec00d8e20}{%
-           family={Huth},
-           familyi={H\bibinitperiod},
-           given={Michael},
-           giveni={M\bibinitperiod},
-           givenun=0}}%
-        {{un=0,uniquepart=base,hash=e28c26ad0e11fbb105ad60e981c90c91}{%
-           family={Ryan},
-           familyi={R\bibinitperiod},
-           given={Mark},
-           giveni={M\bibinitperiod},
-           givenun=0}}%
-      }
-      \list{location}{1}{%
-        {Cambridge}%
-      }
-      \list{publisher}{1}{%
-        {Cambridge University Press}%
-      }
-      \strng{namehash}{6ebd7fc21e939ffc1432d167b6cc6110}
-      \strng{fullhash}{6ebd7fc21e939ffc1432d167b6cc6110}
-      \strng{fullhashraw}{6ebd7fc21e939ffc1432d167b6cc6110}
-      \strng{bibnamehash}{6ebd7fc21e939ffc1432d167b6cc6110}
-      \strng{authorbibnamehash}{6ebd7fc21e939ffc1432d167b6cc6110}
-      \strng{authornamehash}{6ebd7fc21e939ffc1432d167b6cc6110}
-      \strng{authorfullhash}{6ebd7fc21e939ffc1432d167b6cc6110}
-      \strng{authorfullhashraw}{6ebd7fc21e939ffc1432d167b6cc6110}
-      \field{sortinit}{H}
-      \field{sortinithash}{23a3aa7c24e56cfa16945d55545109b5}
-      \field{extradatescope}{labelyear}
-      \field{labeldatesource}{}
-      \field{labelnamesource}{author}
-      \field{labeltitlesource}{title}
-      \field{isbn}{978-0-521-54310-1}
-      \field{title}{Logic in Computer Science: Modelling and Reasoning about Systems}
-      \field{year}{2004}
-    \endentry
-  \enddatalist
-\endrefsection
-\endinput
+\bibitem[Biere(2021)]{Satch}
+Armin Biere.
+\newblock {SATCH}: {A} {SAT} solver written in {C}.
+\newblock \url{https://github.com/arminbiere/satch}, 2021.
+\newblock Version 0.5.6rc, Copyright (c) 2021 Armin Biere, JKU Linz.
 
+\bibitem[Colbourn(1984)]{Colbourn1984}
+Charles~J Colbourn.
+\newblock The complexity of completing partial latin squares.
+\newblock \emph{Discrete Applied Mathematics}, 8\penalty0 (1):\penalty0 25--30, 1984.
+
+\bibitem[Cook(1971)]{Cook1971}
+Stephen~A. Cook.
+\newblock The complexity of theorem-proving procedures.
+\newblock \emph{Proceedings of the Third Annual ACM Symposium on Theory of Computing (STOC)}, pages 151--158, 1971.
+
+\bibitem[Davis et~al.(1962)Davis, Logemann, and Loveland]{DPLL1962}
+Martin Davis, George Logemann, and Donald Loveland.
+\newblock A machine program for theorem-proving.
+\newblock \emph{Communications of the ACM}, 5\penalty0 (7):\penalty0 394--397, 1962.
+
+\bibitem[Dechter(2003)]{Dechter2003}
+Rina Dechter.
+\newblock \emph{Constraint Processing}.
+\newblock Morgan Kaufmann, 2003.
+
+\bibitem[E{\'e}n and S{\"o}rensson(2003)]{MiniSat2003}
+Niklas E{\'e}n and Niklas S{\"o}rensson.
+\newblock An extensible {SAT}-solver.
+\newblock In \emph{Proceedings of the 6th International Conference on Theory and Applications of Satisfiability Testing (SAT)}, volume 2919 of \emph{Lecture Notes in Computer Science}, pages 502--518. Springer, 2003.
+
+\bibitem[Eppstein and Zhang(2026)]{EppsteinZhang2026}
+David Eppstein and Linglong Zhang.
+\newblock Sudoku grids that require many clues.
+\newblock arXiv preprint arXiv:2607.05728, 2026.
+\newblock URL \url{https://arxiv.org/abs/2607.05728}.
+
+\bibitem[Friedman(1937)]{Friedman1937}
+Milton Friedman.
+\newblock The use of ranks to avoid the assumptions of normality implicit in the analysis of variance.
+\newblock \emph{Journal of the American Statistical Association}, 32\penalty0 (200):\penalty0 675--701, 1937.
+
+\bibitem[Huth and Ryan(2004)]{HuthRyan2004}
+Michael Huth and Mark Ryan.
+\newblock \emph{Logic in Computer Science: Modelling and Reasoning about Systems}.
+\newblock Cambridge University Press, Cambridge, 2004.
+\newblock ISBN 978-0-521-54310-1.
+
+\bibitem[Kendall(1948)]{Kendall1948}
+Maurice~G. Kendall.
+\newblock \emph{Rank Correlation Methods}.
+\newblock Griffin, London, 1948.
+
+\bibitem[Kwon and Jain(2006)]{KwonJain2006}
+Gihwon Kwon and Himanshu Jain.
+\newblock Optimized {CNF} encoding for {Sudoku} puzzles.
+\newblock In \emph{13th International Conference on Logic for Programming, Artificial Intelligence and Reasoning (LPAR)}, 2006.
+\newblock URL \url{http://www.cs.cmu.edu/~hjain/papers/sudoku-as-SAT.pdf}.
+\newblock Short paper.
+
+\bibitem[Lardeux et~al.(2020)Lardeux, Éric Monfroy, Rodriguez-Tello, Crawford, and Soto]{LARDEUX2020113243}
+Frédéric Lardeux, Éric Monfroy, Eduardo Rodriguez-Tello, Broderick Crawford, and Ricardo Soto.
+\newblock Solving complex problems using model transformations: from set constraint modeling to sat instance solving.
+\newblock \emph{Expert Systems with Applications}, 149:\penalty0 113243, 2020.
+\newblock ISSN 0957-4174.
+\newblock \doi{https://doi.org/10.1016/j.eswa.2020.113243}.
+\newblock URL \url{https://www.sciencedirect.com/science/article/pii/S0957417420300695}.
+
+\bibitem[Lynce and Ouaknine(2006)]{SuSAT}
+Inês Lynce and Joël Ouaknine.
+\newblock Sudoku as a sat problem.
+\newblock In \emph{Proceedings of the 9th International Symposium on Artificial Intelligence and Mathematics (ISAIM)}, 2006.
+
+\bibitem[Marques-Silva and Sakallah(1996)]{GRASP1996}
+Jo{\~a}o~P. Marques-Silva and Karem~A. Sakallah.
+\newblock {GRASP}---{A} new search algorithm for satisfiability.
+\newblock In \emph{Proceedings of the 1996 IEEE/ACM International Conference on Computer-Aided Design (ICCAD)}, pages 220--227. IEEE, 1996.
+\newblock \doi{10.1109/ICCAD.1996.569607}.
+
+\bibitem[Mašulović(2022)]{Masulovic2022}
+Dragan Mašulović.
+\newblock Deducibility in {Sudoku}.
+\newblock arXiv preprint arXiv:2212.01053, 2022.
+\newblock URL \url{https://arxiv.org/abs/2212.01053}.
+
+\bibitem[McGuire et~al.(2014)McGuire, Tugemann, and Civario]{McGuire2014}
+Gary McGuire, Bastian Tugemann, and Gilles Civario.
+\newblock There is no {16}-clue {Sudoku}: Solving the {Sudoku} minimum number of clues problem via hitting set enumeration.
+\newblock \emph{Experimental Mathematics}, 23\penalty0 (2):\penalty0 190--217, 2014.
+\newblock \doi{10.1080/10586458.2013.870056}.
+
+\bibitem[Moskewicz et~al.(2001)Moskewicz, Madigan, Zhao, Zhang, and Malik]{Chaff2001}
+Matthew~W. Moskewicz, Conor~F. Madigan, Ying Zhao, Lintao Zhang, and Sharad Malik.
+\newblock Chaff: Engineering an efficient {SAT} solver.
+\newblock In \emph{Proceedings of the 38th Design Automation Conference (DAC)}, pages 530--535. ACM, 2001.
+
+\bibitem[Russell and Norvig(2010)]{RussellNorvig2010}
+Stuart Russell and Peter Norvig.
+\newblock \emph{Artificial Intelligence: A Modern Approach}.
+\newblock Prentice Hall, 3rd edition, 2010.
+
+\bibitem[Sinz(2005)]{Sinz2005}
+Carsten Sinz.
+\newblock Towards an optimal {CNF} encoding of boolean cardinality constraints.
+\newblock In \emph{Proceedings of the 11th International Conference on Principles and Practice of Constraint Programming (CP)}, volume 3709 of \emph{Lecture Notes in Computer Science}, pages 827--831. Springer, 2005.
+
+\bibitem[Wikipedia(2024)]{wikiSAT}
+Wikipedia.
+\newblock {Boolean satisfiability problem} --- {W}ikipedia{,} the free encyclopedia.
+\newblock \url{http://en.wikipedia.org/w/index.php?title=Boolean\%20satisfiability\%20problem\&oldid=1335700096}, 2024.
+
+\bibitem[Wilcoxon(1945)]{Wilcoxon1945}
+Frank Wilcoxon.
+\newblock Individual comparisons by ranking methods.
+\newblock \emph{Biometrics Bulletin}, 1:\penalty0 80--83, 1945.
+
+\bibitem[Yato(2003)]{Yato2003}
+Takayushi Yato.
+\newblock Complexity and completeness of finding another solution and its application to puzzles.
+\newblock \emph{Master's Thesis, University of Tokyo}, 2003.
+\newblock URL \url{http://www-imai.is.s.u-tokyo.ac.jp/{\~{}}yato/data2/MasterThesis.pdf}.
+
+\end{thebibliography}

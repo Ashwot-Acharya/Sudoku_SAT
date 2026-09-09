@@ -76,17 +76,46 @@ def load_csv(path):
                 try: return int(v)
                 except: return 0
 
+            # Support both old and new schema
+            sat_compact = parse_float("sat_compact_time")
+            if math.isnan(sat_compact):
+                sat_compact = parse_float("sat_time")
+
+            sat_naive = parse_float("sat_naive_time")
+
+            compact_v = parse_int("compact_vars")
+            if compact_v == 0:
+                compact_v = parse_int("cnf_vars")
+
+            compact_c = parse_int("compact_clauses")
+            if compact_c == 0:
+                compact_c = parse_int("cnf_clauses")
+
+            puzzle_name = row.get("puzzle", "") or row.get("puzzle_name", "")
+
             rows.append({
-                "group":       row.get("group", ""),
-                "size":        int(row.get("size", 0)),
-                "puzzle":      row.get("puzzle", ""),
-                "cnf_vars":    parse_int("cnf_vars"),
-                "cnf_clauses": parse_int("cnf_clauses"),
-                "enc_time":    parse_float("enc_time"),
-                "sat_time":    parse_float("sat_time"),
-                "bt_time":     parse_float("bt_time"),
-                "sat_status":  row.get("sat_status", ""),
-                "bt_status":   row.get("bt_status", ""),
+                "group":            row.get("group", ""),
+                "size":             int(row.get("size", 0)),
+                "puzzle":           puzzle_name,
+                "num_clues":        parse_int("num_clues"),
+                "cnf_vars":         compact_v,
+                "cnf_clauses":      compact_c,
+                "compact_vars":     compact_v,
+                "compact_clauses":  compact_c,
+                "naive_vars":       parse_int("naive_vars"),
+                "naive_clauses":    parse_int("naive_clauses"),
+                "enc_time":         parse_float("compact_enc_time") if not math.isnan(parse_float("compact_enc_time")) else parse_float("enc_time"),
+                "compact_enc_time": parse_float("compact_enc_time"),
+                "naive_enc_time":   parse_float("naive_enc_time"),
+                "sat_time":         sat_compact,
+                "sat_compact_time": sat_compact,
+                "sat_naive_time":   sat_naive,
+                "bt_time":          parse_float("bt_time"),
+                "sat_status":       row.get("sat_compact_status", "") or row.get("sat_status", ""),
+                "sat_compact_status": row.get("sat_compact_status", "") or row.get("sat_status", ""),
+                "sat_naive_status": row.get("sat_naive_status", ""),
+                "bt_status":        row.get("bt_status", ""),
+                "validator_passed": row.get("validator_passed", "True").lower() == "true",
             })
     return rows
 
@@ -605,6 +634,49 @@ def find_csv_auto():
         if os.path.exists(p):
             return os.path.abspath(p)
     return None
+
+
+def generate_all_plots(csv_path, out_dir):
+    os.makedirs(out_dir, exist_ok=True)
+    rows = load_csv(csv_path)
+    if not rows:
+        print("No rows found in CSV for plotting.")
+        return []
+    tb_h = timeout_bar_height(rows)
+
+    from collections import defaultdict
+    groups = defaultdict(list)
+    for r in rows:
+        groups[r["group"]].append(r)
+
+    saved = []
+    for g in GROUP_ORDER:
+        if g not in groups:
+            continue
+        p = plot_group(g, groups[g], out_dir, tb_h)
+        if p: saved.append(p)
+        p = plot_group_line(g, groups[g], out_dir, tb_h)
+        if p: saved.append(p)
+
+    for g, g_rows in groups.items():
+        if g not in GROUP_ORDER:
+            p = plot_group(g, g_rows, out_dir, tb_h)
+            if p: saved.append(p)
+            p = plot_group_line(g, g_rows, out_dir, tb_h)
+            if p: saved.append(p)
+
+    p = plot_overview(rows, out_dir, tb_h)
+    if p: saved.append(p)
+    p = plot_scaling(rows, out_dir, tb_h)
+    if p: saved.append(p)
+    p = plot_size_comparison(rows, out_dir, tb_h)
+    if p: saved.append(p)
+    p = plot_speedup(rows, out_dir)
+    if p: saved.append(p)
+    p = plot_cnf_stats(rows, out_dir)
+    if p: saved.append(p)
+
+    return saved
 
 
 def main():

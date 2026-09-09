@@ -1,19 +1,148 @@
 \relax 
-\abx@aux@refcontext{nyt/global//global/global/global}
-\abx@aux@cite{0}{HuthRyan2004}
-\abx@aux@segm{0}{0}{HuthRyan2004}
-\@writefile{toc}{\contentsline {section}{\numberline {1}CNF Conversion for $ 4 \times 4 $ sudoku }{1}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {1.1}What is CNF?}{1}{}\protected@file@percent }
-\abx@aux@page{1}{1}
-\@writefile{toc}{\contentsline {subsection}{\numberline {1.2}Basic representation}{1}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {1.3}Clause for each cells}{1}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {1.4}uniqueness of row and column}{2}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsubsection}{\numberline {1.4.1}For row}{2}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsubsection}{\numberline {1.4.2}For Column}{3}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsubsection}{\numberline {1.4.3}for $3 \times 3$ sub grid}{3}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {section}{\numberline {2}Writing of the CNF as a whole}{3}{}\protected@file@percent }
-\abx@aux@page{2}{3}
-\abx@aux@read@bbl@mdfivesum{nohash}
-\abx@aux@read@bblrerun
-\abx@aux@defaultrefcontext{0}{HuthRyan2004}{nyt/global//global/global/global}
-\gdef \@abspage@last{4}
+\providecommand\hyper@newdestlabel[2]{}
+\providecommand\HyField@AuxAddToFields[1]{}
+\providecommand\HyField@AuxAddToCoFields[2]{}
+\bibstyle{plainnat}
+\citation{KwonJain2006}
+\citation{sudokueg}
+\citation{sudokueg}
+\citation{Colbourn1984}
+\citation{Yato2003}
+\citation{Yato2003}
+\citation{Yato2003}
+\citation{RussellNorvig2010,Dechter2003}
+\citation{wikiSAT}
+\@writefile{toc}{\contentsline {section}{\numberline {1}Introduction}{5}{section.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {1.1}Sudoku}{5}{subsection.1.1}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {1}{\ignorespaces $9 \times 9 $ Sudoku and its solution \citep  {sudokueg}}}{5}{figure.caption.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {1.1.1}Complexity of Generalized Sudoku Problem}{5}{subsubsection.1.1.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {1.1.2}Sudoku as CSP}{5}{subsubsection.1.1.2}\protected@file@percent }
+\citation{Cook1971}
+\citation{wikiSAT}
+\citation{DPLL1962}
+\citation{GRASP1996}
+\citation{Chaff2001}
+\citation{MiniSat2003}
+\citation{Satch}
+\citation{Sinz2005}
+\citation{LARDEUX2020113243}
+\citation{HuthRyan2004}
+\@writefile{toc}{\contentsline {subsection}{\numberline {1.2}The Boolean Satisfiability Problem}{6}{subsection.1.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {1.2.1}Complexity of SAT}{6}{subsubsection.1.2.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {1.2.2}SAT Solvers}{6}{subsubsection.1.2.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {1.3}Justification for SAT approach}{6}{subsection.1.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {2}Mathematical Formulation}{7}{section.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.1}Conjunctive Normal Form}{7}{subsection.2.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.2}Representation of Sudoku As Boolean Expression (CNF)}{7}{subsection.2.2}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {2}{\ignorespaces $4 \times 4$ Sudoku}}{7}{figure.caption.2}\protected@file@percent }
+\providecommand*\caption@xref[2]{\@setref\relax\@undefined{#1}}
+\newlabel{fig:44}{{2}{7}{$4 \times 4$ Sudoku}{figure.caption.2}{}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {2.2.1}Definedness}{7}{subsubsection.2.2.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {2.2.2}Uniqueness}{8}{subsubsection.2.2.2}\protected@file@percent }
+\citation{KwonJain2006}
+\citation{SuSAT}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {2.2.3}Final Formula}{10}{subsubsection.2.2.3}\protected@file@percent }
+\citation{Satch}
+\citation{KwonJain2006}
+\@writefile{toc}{\contentsline {section}{\numberline {3}Implementation}{11}{section.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.1}Computer Representation}{11}{subsection.3.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {3.1.1}DIMACS Format}{11}{subsubsection.3.1.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.2}Mapping variables to integers}{11}{subsection.3.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.3}Solution Using SAT Solvers}{11}{subsection.3.3}\protected@file@percent }
+\citation{KwonJain2006}
+\citation{McGuire2014}
+\citation{EppsteinZhang2026}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.4}Dual CNF Encoding}{12}{subsection.3.4}\protected@file@percent }
+\newlabel{sec:encoding}{{3.4}{12}{Dual CNF Encoding}{subsection.3.4}{}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {3.4.1}Naive (Full) Encoding $\phi $}{12}{subsubsection.3.4.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {3.4.2}Compact Encoding $\phi '$}{12}{subsubsection.3.4.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {4}Experimental Setup}{12}{section.4}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.1}Dataset}{12}{subsection.4.1}\protected@file@percent }
+\citation{Satch}
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.2}Benchmark Protocol}{13}{subsection.4.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.3}Metrics}{13}{subsection.4.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {5}Results}{13}{section.5}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.1}Solver Performance (Solve-Only Time)}{13}{subsection.5.1}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {1}{\ignorespaces Solver performance: solve-only time (mean $\pm $ std).}}{14}{table.caption.3}\protected@file@percent }
+\newlabel{tab:solve_only}{{1}{14}{Solver performance: solve-only time (mean $\pm $ std)}{table.caption.3}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.2}End-to-End Performance (Encoding + Solve)}{14}{subsection.5.2}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {2}{\ignorespaces End-to-end performance: encoding + solve time.}}{14}{table.caption.4}\protected@file@percent }
+\newlabel{tab:e2e}{{2}{14}{End-to-end performance: encoding + solve time}{table.caption.4}{}}
+\citation{Wilcoxon1945}
+\citation{Friedman1937}
+\citation{Kendall1948}
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.3}CNF Dual Encoding Comparison}{15}{subsection.5.3}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {3}{\ignorespaces CNF encoding size comparison: naive ($\phi $) vs.\ compact ($\phi '$).}}{15}{table.caption.5}\protected@file@percent }
+\newlabel{tab:encoding}{{3}{15}{CNF encoding size comparison: naive ($\phi $) vs.\ compact ($\phi '$)}{table.caption.5}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.4}Scaling Visualization}{15}{subsection.5.4}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {6}Statistical Analysis}{15}{section.6}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {6.1}Methodology}{15}{subsection.6.1}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {3}{\ignorespaces Mean solve time (log scale) across grid sizes for SAT Compact, SAT Naive, and Backtracking solvers.}}{16}{figure.caption.6}\protected@file@percent }
+\newlabel{fig:scaling}{{3}{16}{Mean solve time (log scale) across grid sizes for SAT Compact, SAT Naive, and Backtracking solvers}{figure.caption.6}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {4}{\ignorespaces Speedup ratios: BT/SAT Compact and SAT Naive/SAT Compact across grid sizes.}}{16}{figure.caption.7}\protected@file@percent }
+\newlabel{fig:speedup}{{4}{16}{Speedup ratios: BT/SAT Compact and SAT Naive/SAT Compact across grid sizes}{figure.caption.7}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {5}{\ignorespaces Overview of all solver times across grid sizes.}}{17}{figure.caption.8}\protected@file@percent }
+\newlabel{fig:overview}{{5}{17}{Overview of all solver times across grid sizes}{figure.caption.8}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {6}{\ignorespaces Naive vs.\ compact encoding: variable and clause counts across grid sizes.}}{17}{figure.caption.9}\protected@file@percent }
+\newlabel{fig:cnf_encoding}{{6}{17}{Naive vs.\ compact encoding: variable and clause counts across grid sizes}{figure.caption.9}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {6.2}Wilcoxon Signed-Rank Test: BT vs.\ SAT Compact}{18}{subsection.6.2}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {4}{\ignorespaces Wilcoxon signed-rank test: BT vs.\ SAT Compact solve time.}}{18}{table.caption.10}\protected@file@percent }
+\newlabel{tab:wilcoxon}{{4}{18}{Wilcoxon signed-rank test: BT vs.\ SAT Compact solve time}{table.caption.10}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {6.3}Friedman Test: Multi-Solver Comparison}{18}{subsection.6.3}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {5}{\ignorespaces Friedman test (BT vs.\ SAT-C vs.\ SAT-N) with Kendall's $W$ effect size.}}{18}{table.caption.11}\protected@file@percent }
+\newlabel{tab:friedman}{{5}{18}{Friedman test (BT vs.\ SAT-C vs.\ SAT-N) with Kendall's $W$ effect size}{table.caption.11}{}}
+\citation{Masulovic2022}
+\@writefile{toc}{\contentsline {subsection}{\numberline {6.4}Solution Correctness}{19}{subsection.6.4}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {7}Discussion}{19}{section.7}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {7.1}Encoding Optimization is Critical}{19}{subsection.7.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {7.2}SAT vs.\ Backtracking: A Size-Dependent Trade-off}{19}{subsection.7.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {7.3}Encoding Time Dominates E2E}{19}{subsection.7.3}\protected@file@percent }
+\citation{Satch}
+\citation{EppsteinZhang2026}
+\citation{KwonJain2006}
+\@writefile{toc}{\contentsline {subsection}{\numberline {7.4}Statistical Rigor}{20}{subsection.7.4}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {7.5}Limitations}{20}{subsection.7.5}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {8}Conclusion}{20}{section.8}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {A}Compact Encoding (sudoku\_to\_cnf.py)}{22}{appendix.A}\protected@file@percent }
+\newlabel{app:encoding}{{A}{22}{Compact Encoding (sudoku\_to\_cnf.py)}{appendix.A}{}}
+\@writefile{lol}{\contentsline {lstlisting}{\numberline {1}{\ignorespaces Compact CNF encoding following Kwon and Jain}}{22}{lstlisting.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {B}Naive Encoding (dual\_encoder.py)}{24}{appendix.B}\protected@file@percent }
+\newlabel{app:naive}{{B}{24}{Naive Encoding (dual\_encoder.py)}{appendix.B}{}}
+\@writefile{lol}{\contentsline {lstlisting}{\numberline {2}{\ignorespaces Naive (full) CNF encoding}}{24}{lstlisting.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {C}Solution Decoder}{26}{appendix.C}\protected@file@percent }
+\newlabel{app:decoder}{{C}{26}{Solution Decoder}{appendix.C}{}}
+\@writefile{lol}{\contentsline {lstlisting}{\numberline {3}{\ignorespaces Decoding SAT assignment back to grid}}{26}{lstlisting.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {D}CDCL Solver Core (C)}{27}{appendix.D}\protected@file@percent }
+\newlabel{app:cdcl}{{D}{27}{CDCL Solver Core (C)}{appendix.D}{}}
+\@writefile{lol}{\contentsline {lstlisting}{\numberline {4}{\ignorespaces Core CDCL solve loop}}{27}{lstlisting.4}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {E}Benchmark Orchestration (unified\_benchmark.py)}{27}{appendix.E}\protected@file@percent }
+\newlabel{app:benchmark}{{E}{27}{Benchmark Orchestration (unified\_benchmark.py)}{appendix.E}{}}
+\@writefile{lol}{\contentsline {lstlisting}{\numberline {5}{\ignorespaces Benchmark pipeline orchestrator (excerpt)}}{27}{lstlisting.5}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {F}Statistical Analysis (statistical\_analysis.py)}{28}{appendix.F}\protected@file@percent }
+\newlabel{app:stats}{{F}{28}{Statistical Analysis (statistical\_analysis.py)}{appendix.F}{}}
+\@writefile{lol}{\contentsline {lstlisting}{\numberline {6}{\ignorespaces Inferential tests (excerpt)}}{28}{lstlisting.6}\protected@file@percent }
+\bibdata{references}
+\bibcite{sudokueg}{{1}{2024}{{Arizona}}{{}}}
+\bibcite{Satch}{{2}{2021}{{Biere}}{{}}}
+\bibcite{Colbourn1984}{{3}{1984}{{Colbourn}}{{}}}
+\bibcite{Cook1971}{{4}{1971}{{Cook}}{{}}}
+\bibcite{DPLL1962}{{5}{1962}{{Davis et~al.}}{{Davis, Logemann, and Loveland}}}
+\bibcite{Dechter2003}{{6}{2003}{{Dechter}}{{}}}
+\bibcite{MiniSat2003}{{7}{2003}{{E{\'e}n and S{\"o}rensson}}{{}}}
+\bibcite{EppsteinZhang2026}{{8}{2026}{{Eppstein and Zhang}}{{}}}
+\bibcite{Friedman1937}{{9}{1937}{{Friedman}}{{}}}
+\bibcite{HuthRyan2004}{{10}{2004}{{Huth and Ryan}}{{}}}
+\bibcite{Kendall1948}{{11}{1948}{{Kendall}}{{}}}
+\bibcite{KwonJain2006}{{12}{2006}{{Kwon and Jain}}{{}}}
+\bibcite{LARDEUX2020113243}{{13}{2020}{{Lardeux et~al.}}{{Lardeux, Éric Monfroy, Rodriguez-Tello, Crawford, and Soto}}}
+\bibcite{SuSAT}{{14}{2006}{{Lynce and Ouaknine}}{{}}}
+\bibcite{GRASP1996}{{15}{1996}{{Marques-Silva and Sakallah}}{{}}}
+\bibcite{Masulovic2022}{{16}{2022}{{Mašulović}}{{}}}
+\bibcite{McGuire2014}{{17}{2014}{{McGuire et~al.}}{{McGuire, Tugemann, and Civario}}}
+\bibcite{Chaff2001}{{18}{2001}{{Moskewicz et~al.}}{{Moskewicz, Madigan, Zhao, Zhang, and Malik}}}
+\bibcite{RussellNorvig2010}{{19}{2010}{{Russell and Norvig}}{{}}}
+\bibcite{Sinz2005}{{20}{2005}{{Sinz}}{{}}}
+\bibcite{wikiSAT}{{21}{2024}{{Wikipedia}}{{}}}
+\bibcite{Wilcoxon1945}{{22}{1945}{{Wilcoxon}}{{}}}
+\bibcite{Yato2003}{{23}{2003}{{Yato}}{{}}}
+\gdef \@abspage@last{31}
