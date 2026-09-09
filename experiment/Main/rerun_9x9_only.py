@@ -3,7 +3,7 @@ import csv
 import importlib.util
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-OUTPUT_DIR = os.path.join(SCRIPT_DIR, "..", "Output")
+OUTPUT_DIR = os.path.join(SCRIPT_DIR, "..", "..", "Results")
 CSV_PATH   = os.path.join(OUTPUT_DIR, "benchmark_results.csv")
 
 

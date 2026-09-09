@@ -13,7 +13,7 @@ import signal
 
 SCRIPT_DIR  = os.path.dirname(os.path.abspath(__file__))
 PUZZLES_DIR = os.path.join(SCRIPT_DIR, "..", "Puzzles")
-SOL_DIR     = os.path.join(SCRIPT_DIR, "..", "Output", "Sol")
+SOL_DIR     = os.path.join(SCRIPT_DIR, "..", "..", "Results", "Sol")
 os.makedirs(SOL_DIR, exist_ok=True)
 
 TIMEOUT_SECONDS  = 5 * 60

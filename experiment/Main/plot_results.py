@@ -599,8 +599,8 @@ def find_csv_auto():
     here = os.path.dirname(os.path.abspath(__file__))
     for p in [
         os.path.join(here, "benchmark_results.csv"),
-        os.path.join(here, "..", "Output", "benchmark_results.csv"),
-        os.path.join(here, "Output",         "benchmark_results.csv"),
+        os.path.join(here, "..", "..", "Results", "benchmark_results.csv"),
+        os.path.join(here, "..", "Results", "benchmark_results.csv"),
     ]:
         if os.path.exists(p):
             return os.path.abspath(p)

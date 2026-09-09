@@ -7,7 +7,7 @@ import sys
 
 SCRIPT_DIR  = os.path.dirname(os.path.abspath(__file__))
 CNF_DIR     = os.path.join(SCRIPT_DIR, "..", "CNF")
-SOL_DIR     = os.path.join(SCRIPT_DIR, "..", "Output", "Sol")
+SOL_DIR     = os.path.join(SCRIPT_DIR, "..", "..", "Results", "Sol")
 TEMP_DIR    = os.path.join(SCRIPT_DIR, "..", "Temp")
 PUZZLES_DIR = os.path.join(SCRIPT_DIR, "..", "Puzzles")
 

@@ -17,7 +17,7 @@ import importlib.util
 from collections import defaultdict
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-OUTPUT_DIR = os.path.join(SCRIPT_DIR, "..", "Output")
+OUTPUT_DIR = os.path.join(SCRIPT_DIR, "..", "..", "Results")
 PUZZLES_DIR = os.path.join(SCRIPT_DIR, "..", "Puzzles")
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 

@@ -60,8 +60,8 @@ def main():
     print("  Pipeline complete!")
     print(f"  Puzzles   -> ../Puzzles/")
     print(f"  CNF files -> ../CNF/")
-    print(f"  Solutions -> ../Output/Sol/")
-    print(f"  Plots     -> ../Output/")
+    print(f"  Solutions -> ../../Results/Sol/")
+    print(f"  Plots     -> ../../Results/")
     print("="*58)
 
 if __name__ == "__main__":

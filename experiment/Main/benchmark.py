@@ -7,7 +7,7 @@ Backtracking timeout = 10 min; shown as >10min in plots.
 import os, sys, csv, math, argparse, importlib.util
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, SCRIPT_DIR)
-OUTPUT_DIR = os.path.join(SCRIPT_DIR, "..", "Output")
+OUTPUT_DIR = os.path.join(SCRIPT_DIR, "..", "..", "Results")
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 TIMEOUT_PLOT_Y = 5 * 60
