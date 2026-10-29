@@ -19,6 +19,7 @@ from sudoku_to_cnf import (
     read_puzzle,
     write_dimacs as _write_dimacs_compact,
 )
+from log_encoder import encode_log, write_dimacs_log
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 CNF_DIR = os.path.join(SCRIPT_DIR, "..", "CNF")
@@ -196,14 +197,19 @@ def compare_encodings(n, puzzle):
     )
 
     # Naive
-    t0 = time.time()
+    t0 = time.perf_counter()
     n_clauses, n_vars, _ = encode_naive(n, puzzle)
-    naive_time = time.time() - t0
+    naive_time = time.perf_counter() - t0
 
     # Compact
-    t0 = time.time()
+    t0 = time.perf_counter()
     c_clauses, c_vars, _ = encode_compact(n, puzzle)
-    compact_time = time.time() - t0
+    compact_time = time.perf_counter() - t0
+
+    # Logarithmic binary
+    t0 = time.perf_counter()
+    l_clauses, l_vars, l_width = encode_log(n, puzzle)
+    log_time = time.perf_counter() - t0
 
     naive_stats = {
         "num_vars": n_vars,
@@ -216,6 +222,13 @@ def compare_encodings(n, puzzle):
         "num_clauses": len(c_clauses),
         "encode_time_s": compact_time,
         "clause_lengths": _clause_length_distribution(c_clauses),
+    }
+    log_stats = {
+        "num_vars": l_vars,
+        "num_clauses": len(l_clauses),
+        "encode_time_s": log_time,
+        "bits_per_cell": l_width,
+        "clause_lengths": _clause_length_distribution(l_clauses),
     }
 
     var_red = (1 - c_vars / n_vars) * 100 if n_vars else 0.0
@@ -230,6 +243,7 @@ def compare_encodings(n, puzzle):
         "num_clues": num_clues,
         "naive": naive_stats,
         "compact": compact_stats,
+        "log": log_stats,
         "reduction": {
             "var_reduction_pct": var_red,
             "clause_reduction_pct": clause_red,
@@ -312,12 +326,18 @@ def encode_puzzle_both(puzzle_path, output_dir):
         puzzle_path, V0_list, fixed_cells,
     )
 
+    # ── Logarithmic encoding ──────────────────────────────────────────────
+    log_cnf_path = os.path.join(output_dir, basename + "_log.cnf")
+    l_clauses, l_vars, _ = encode_log(n, puzzle)
+    write_dimacs_log(log_cnf_path, l_clauses, l_vars, n, puzzle)
+
     # ── Comparison stats ──────────────────────────────────────────────────
     comparison = compare_encodings(n, puzzle)
 
     return {
         "naive_cnf": naive_cnf_path,
         "compact_cnf": compact_cnf_path,
+        "log_cnf": log_cnf_path,
         "comparison": comparison,
     }
 

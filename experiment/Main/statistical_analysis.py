@@ -34,7 +34,7 @@ def parse_float(v):
     if isinstance(v, (int, float)):
         return float(v)
     v_str = str(v).strip().lower()
-    if v_str in ("inf", "infinity", ">600s", ">300s", "timeout"):
+    if v_str in ("inf", "infinity", ">120s", ">600s", ">300s", "timeout"):
         return float("inf")
     if v_str in ("", "nan", "none", "skipped"):
         return float("nan")
@@ -65,6 +65,7 @@ def load_rows(csv_path_or_rows):
         processed.append({
             "run_id": r.get("run_id", ""),
             "repeat": int(r.get("repeat", 1)),
+            "generator": r.get("generator", ""),
             "group": r.get("group", ""),
             "size": int(r.get("size", 0)),
             "puzzle_name": r.get("puzzle_name") or r.get("puzzle", ""),
@@ -75,12 +76,18 @@ def load_rows(csv_path_or_rows):
             "compact_vars": int(r.get("compact_vars") or r.get("cnf_vars", 0)),
             "compact_clauses": int(r.get("compact_clauses") or r.get("cnf_clauses", 0)),
             "compact_enc_time": parse_float(r.get("compact_enc_time") or r.get("enc_time", 0)),
+            "log_vars": int(r.get("log_vars", 0)),
+            "log_clauses": int(r.get("log_clauses", 0)),
+            "log_enc_time": parse_float(r.get("log_enc_time", 0)),
             "sat_compact_time": parse_float(r.get("sat_compact_time") or r.get("sat_time", float("nan"))),
             "sat_compact_e2e": parse_float(r.get("sat_compact_e2e", float("nan"))),
             "sat_compact_status": r.get("sat_compact_status") or r.get("sat_status", ""),
             "sat_naive_time": parse_float(r.get("sat_naive_time", float("nan"))),
             "sat_naive_e2e": parse_float(r.get("sat_naive_e2e", float("nan"))),
             "sat_naive_status": r.get("sat_naive_status", ""),
+            "sat_log_time": parse_float(r.get("sat_log_time", float("nan"))),
+            "sat_log_e2e": parse_float(r.get("sat_log_e2e", float("nan"))),
+            "sat_log_status": r.get("sat_log_status", ""),
             "bt_time": parse_float(r.get("bt_time", float("nan"))),
             "bt_status": r.get("bt_status", ""),
             "validator_passed": parse_bool(r.get("validator_passed", True)),
@@ -122,8 +129,8 @@ def calc_stats(arr):
             "p95": float("inf") if timeouts > 0 else float("nan"),
         }
 
-    # Upper-bound mean: treat each timeout as TIMEOUT_SECONDS (600 by convention)
-    TIMEOUT_VAL = 600.0
+    # Upper-bound mean: treat each timeout as TIMEOUT_SECONDS (120 by convention)
+    TIMEOUT_VAL = 120.0
     upper_bound_vals = finite + [TIMEOUT_VAL] * timeouts
     mean_ub = float(np.mean(upper_bound_vals))
 
@@ -172,11 +179,12 @@ def run_inferential_tests(rows):
     # Group rows by size for per-size tests
     by_size = defaultdict(list)
     for r in rows:
-        by_size[r["size"]].append(r)
+        by_size[(r.get("generator", ""), r["size"])].append(r)
 
     # ── Per-size Wilcoxon: BT vs SAT Compact ────────────────────────────────
     wilcoxon_results = {}
-    for size, g_rows in sorted(by_size.items()):
+    for key, g_rows in sorted(by_size.items()):
+        size = key
         bt_t = [r["bt_time"] for r in g_rows]
         sc_t = [r["sat_compact_time"] for r in g_rows]
         bt_f, sc_f = _paired_finite(bt_t, sc_t)
@@ -236,11 +244,13 @@ def run_inferential_tests(rows):
             "bt": r["bt_time"],
             "sat_c": r["sat_compact_time"],
             "sat_n": r["sat_naive_time"],
+            "sat_l": r["sat_log_time"],
         }
 
     # For Friedman, we need same-size puzzles. Let's do it per size.
     friedman_results = {}
-    for size, g_rows in sorted(by_size.items()):
+    for key, g_rows in sorted(by_size.items()):
+        size = key
         # Group by puzzle within this size
         puz_data = defaultdict(list)
         for r in g_rows:
@@ -317,23 +327,27 @@ def analyze_benchmark_results(csv_path_or_rows):
 
     groups = {}
     for r in rows:
-        key = (r["size"], r["group"])
+        key = (r.get("generator", ""), r["size"], r["group"])
         if key not in groups:
             groups[key] = []
         groups[key].append(r)
 
     group_analysis = {}
-    for (size, group_name), g_rows in sorted(groups.items(), key=lambda x: (x[0][0], x[0][1])):
+    for (gen_name, size, group_name), g_rows in sorted(groups.items(), key=lambda x: (x[0][0], x[0][1], x[0][2])):
         sat_c_times = [r["sat_compact_time"] for r in g_rows]
         sat_c_e2e = [r["sat_compact_e2e"] for r in g_rows]
         sat_n_times = [r["sat_naive_time"] for r in g_rows]
         sat_n_e2e = [r["sat_naive_e2e"] for r in g_rows]
+        sat_l_times = [r["sat_log_time"] for r in g_rows]
+        sat_l_e2e = [r["sat_log_e2e"] for r in g_rows]
         bt_times = [r["bt_time"] for r in g_rows]
 
         sat_c_stats = calc_stats(sat_c_times)
         sat_c_e2e_stats = calc_stats(sat_c_e2e)
         sat_n_stats = calc_stats(sat_n_times)
         sat_n_e2e_stats = calc_stats(sat_n_e2e)
+        sat_l_stats = calc_stats(sat_l_times)
+        sat_l_e2e_stats = calc_stats(sat_l_e2e)
         bt_stats = calc_stats(bt_times)
 
         naive_vars_mean = float(np.mean([r["naive_vars"] for r in g_rows]))
@@ -342,11 +356,14 @@ def analyze_benchmark_results(csv_path_or_rows):
         compact_clauses_mean = float(np.mean([r["compact_clauses"] for r in g_rows]))
         naive_enc_mean = float(np.mean([r["naive_enc_time"] for r in g_rows]))
         compact_enc_mean = float(np.mean([r["compact_enc_time"] for r in g_rows]))
+        log_vars_mean = float(np.mean([r["log_vars"] for r in g_rows]))
+        log_clauses_mean = float(np.mean([r["log_clauses"] for r in g_rows]))
+        log_enc_mean = float(np.mean([r["log_enc_time"] for r in g_rows]))
 
         var_red = ((naive_vars_mean - compact_vars_mean) / naive_vars_mean * 100.0) if naive_vars_mean > 0 else 0.0
         clause_red = ((naive_clauses_mean - compact_clauses_mean) / naive_clauses_mean * 100.0) if naive_clauses_mean > 0 else 0.0
 
-        # Speedups (using mean_upper_bound which includes timeouts as 600s)
+        # Speedups (using mean_upper_bound which includes timeouts as 120s)
         def _safe_speedup(a, b):
             """Compute a/b, handling inf/nan."""
             if math.isinf(a) and not math.isinf(b) and b > 0:
@@ -363,6 +380,8 @@ def analyze_benchmark_results(csv_path_or_rows):
         speedup_nc_solve = _safe_speedup(sat_n_stats["mean_upper_bound"], sat_c_stats["mean_upper_bound"])
         # Speedup: Naive vs Compact (e2e)
         speedup_nc_e2e = _safe_speedup(sat_n_e2e_stats["mean_upper_bound"], sat_c_e2e_stats["mean_upper_bound"])
+        speedup_nl_solve = _safe_speedup(sat_n_stats["mean_upper_bound"], sat_l_stats["mean_upper_bound"])
+        speedup_nl_e2e = _safe_speedup(sat_n_e2e_stats["mean_upper_bound"], sat_l_e2e_stats["mean_upper_bound"])
 
         validations = [r["validator_passed"] for r in g_rows]
         val_pass_rate = (sum(validations) / len(validations) * 100.0) if validations else 100.0
@@ -370,9 +389,11 @@ def analyze_benchmark_results(csv_path_or_rows):
         # Success rate (non-timeout, non-error)
         sc_success = sum(1 for r in g_rows if r["sat_compact_status"] == "solved")
         sn_success = sum(1 for r in g_rows if r["sat_naive_status"] == "solved")
+        sl_success = sum(1 for r in g_rows if r["sat_log_status"] == "solved")
         bt_success = sum(1 for r in g_rows if r["bt_status"] == "solved")
 
-        group_analysis[f"{size}x{size}_{group_name}"] = {
+        group_analysis[f"{gen_name}_{size}x{size}_{group_name}"] = {
+            "generator": gen_name,
             "size": size,
             "group": group_name,
             "count": len(g_rows),
@@ -380,6 +401,8 @@ def analyze_benchmark_results(csv_path_or_rows):
             "sat_compact_e2e": sat_c_e2e_stats,
             "sat_naive": sat_n_stats,
             "sat_naive_e2e": sat_n_e2e_stats,
+            "sat_log": sat_l_stats,
+            "sat_log_e2e": sat_l_e2e_stats,
             "backtracking": bt_stats,
             "naive_vars": naive_vars_mean,
             "naive_clauses": naive_clauses_mean,
@@ -387,15 +410,21 @@ def analyze_benchmark_results(csv_path_or_rows):
             "compact_clauses": compact_clauses_mean,
             "naive_enc_time_mean": naive_enc_mean,
             "compact_enc_time_mean": compact_enc_mean,
+            "log_vars": log_vars_mean,
+            "log_clauses": log_clauses_mean,
+            "log_enc_time_mean": log_enc_mean,
             "var_reduction_pct": var_red,
             "clause_reduction_pct": clause_red,
             "speedup_bt_sat_solve": speedup_bt_sat_solve,
             "speedup_bt_sat_e2e": speedup_bt_sat_e2e,
             "speedup_naive_compact_solve": speedup_nc_solve,
             "speedup_naive_compact_e2e": speedup_nc_e2e,
+            "speedup_naive_log_solve": speedup_nl_solve,
+            "speedup_naive_log_e2e": speedup_nl_e2e,
             "validation_pass_rate": val_pass_rate,
             "sat_compact_success": sc_success,
             "sat_naive_success": sn_success,
+            "sat_log_success": sl_success,
             "bt_success": bt_success,
         }
 
@@ -422,7 +451,7 @@ def analyze_benchmark_results(csv_path_or_rows):
 
 def format_time(t):
     if math.isinf(t):
-        return ">600s"
+        return ">120s"
     if math.isnan(t):
         return "N/A"
     if t < 0.001:
@@ -432,7 +461,7 @@ def format_time(t):
 
 def _fmt_speedup(val, label=""):
     if math.isinf(val):
-        return f">600s timeout ({label})"
+        return f">120s timeout ({label})"
     if math.isnan(val):
         return "N/A"
     return f"{val:.2f}x"
@@ -448,14 +477,14 @@ def format_report(stats):
     lines.append("> **Note on timing**: Solve-only times exclude CNF encoding overhead. "
                  "End-to-end (e2e) times include encoding + solving. "
                  "Timeout runs (inf) are reported separately; "
-                 "upper-bound means treat each timeout as 600s.")
+                 "upper-bound means treat each timeout as 120s.")
     lines.append("")
 
     # ── Section 1: Solve-only performance ─────────────────────────────────────
     lines.append("## 1. Solver Performance (Solve-Only Time)")
     lines.append("")
-    lines.append("| Grid Size | Group | Runs | SAT Compact (mean±std) [timeouts] | SAT Naive (mean±std) [timeouts] | Backtracking (mean±std) [timeouts] | Speedup BT/SAT-C | Speedup Naive/Compact |")
-    lines.append("|---|---|---|---|---|---|---|---|")
+    lines.append("| Grid Size | Group | Runs | SAT Compact | SAT Naive | SAT Log | Backtracking | Speedup Naive/Compact | Speedup Naive/Log |")
+    lines.append("|---|---|---|---|---|---|---|---|---|")
 
     for key, g in stats["groups"].items():
         size = g["size"]
@@ -463,6 +492,7 @@ def format_report(stats):
         cnt = g["count"]
         sc = g["sat_compact"]
         sn = g["sat_naive"]
+        sl = g["sat_log"]
         bt = g["backtracking"]
 
         def _fmt_with_timeout(s):
@@ -475,39 +505,41 @@ def format_report(stats):
 
         sc_str = _fmt_with_timeout(sc)
         sn_str = _fmt_with_timeout(sn)
+        sl_str = _fmt_with_timeout(sl)
         bt_str = _fmt_with_timeout(bt)
 
-        sp_bt = _fmt_speedup(g["speedup_bt_sat_solve"], "BT timeout")
         sp_nc = _fmt_speedup(g["speedup_naive_compact_solve"])
+        sp_nl = _fmt_speedup(g["speedup_naive_log_solve"])
 
-        lines.append(f"| {size}x{size} | {grp} | {cnt} | {sc_str} | {sn_str} | {bt_str} | {sp_bt} | {sp_nc} |")
+        lines.append(f"| {size}x{size} | {grp} | {cnt} | {sc_str} | {sn_str} | {sl_str} | {bt_str} | {sp_nc} | {sp_nl} |")
 
     lines.append("")
 
     # ── Section 2: End-to-end performance ─────────────────────────────────────
     lines.append("## 2. End-to-End Performance (Encoding + Solve)")
     lines.append("")
-    lines.append("| Grid Size | Group | Compact Enc (mean) | Naive Enc (mean) | SAT Compact E2E (mean) | SAT Naive E2E (mean) | Backtracking (mean) | Speedup BT/SAT-C E2E |")
-    lines.append("|---|---|---|---|---|---|---|---|")
+    lines.append("| Grid Size | Group | Compact Enc | Naive Enc | Log Enc | SAT Compact E2E | SAT Naive E2E | SAT Log E2E | Backtracking |")
+    lines.append("|---|---|---|---|---|---|---|---|---|")
 
     for key, g in stats["groups"].items():
         size = g["size"]
         grp = g["group"]
         ce = format_time(g["compact_enc_time_mean"])
         ne = format_time(g["naive_enc_time_mean"])
+        le = format_time(g["log_enc_time_mean"])
         sce = _fmt_with_timeout(g["sat_compact_e2e"])
         sne = _fmt_with_timeout(g["sat_naive_e2e"])
+        sle = _fmt_with_timeout(g["sat_log_e2e"])
         bt_t = _fmt_with_timeout(g["backtracking"])
-        sp = _fmt_speedup(g["speedup_bt_sat_e2e"], "BT timeout")
 
-        lines.append(f"| {size}x{size} | {grp} | {ce} | {ne} | {sce} | {sne} | {bt_t} | {sp} |")
+        lines.append(f"| {size}x{size} | {grp} | {ce} | {ne} | {le} | {sce} | {sne} | {sle} | {bt_t} |")
 
     lines.append("")
 
     # ── Section 3: Encoding comparison ────────────────────────────────────────
-    lines.append("## 3. CNF Dual Encoding Comparison")
+    lines.append("## 3. CNF Encoding Comparison")
     lines.append("")
-    lines.append("| Grid Size | Group | Naive Vars | Naive Clauses | Compact Vars | Compact Clauses | Var Reduction (%) | Clause Reduction (%) |")
+    lines.append("| Grid Size | Group | Naive Vars | Naive Clauses | Compact Vars | Compact Clauses | Log Vars | Log Clauses |")
     lines.append("|---|---|---|---|---|---|---|---|")
 
     for key, g in stats["groups"].items():
@@ -517,10 +549,10 @@ def format_report(stats):
         nc = int(g["naive_clauses"])
         cv = int(g["compact_vars"])
         cc = int(g["compact_clauses"])
-        vr = f"{g['var_reduction_pct']:.1f}%"
-        cr = f"{g['clause_reduction_pct']:.1f}%"
+        lv = int(g["log_vars"])
+        lc = int(g["log_clauses"])
 
-        lines.append(f"| {size}x{size} | {grp} | {nv:,} | {nc:,} | {cv:,} | {cc:,} | {vr} | {cr} |")
+        lines.append(f"| {size}x{size} | {grp} | {nv:,} | {nc:,} | {cv:,} | {cc:,} | {lv:,} | {lc:,} |")
 
     lines.append("")
 
@@ -533,10 +565,10 @@ def format_report(stats):
     lines.append(f"- **Overall Validation Pass Rate**: {stats['overall']['validation_pass_rate']:.1f}%")
     lines.append("")
 
-    lines.append("| Grid Size | Group | SAT-C Solved | SAT-N Solved | BT Solved | Validation Pass |")
-    lines.append("|---|---|---|---|---|---|")
+    lines.append("| Grid Size | Group | SAT-C Solved | SAT-N Solved | SAT-L Solved | BT Solved | Validation Pass |")
+    lines.append("|---|---|---|---|---|---|---|")
     for key, g in stats["groups"].items():
-        lines.append(f"| {g['size']}x{g['size']} | {g['group']} | {g['sat_compact_success']}/{g['count']} | {g['sat_naive_success']}/{g['count']} | {g['bt_success']}/{g['count']} | {g['validation_pass_rate']:.0f}% |")
+        lines.append(f"| {g['size']}x{g['size']} | {g['group']} | {g['sat_compact_success']}/{g['count']} | {g['sat_naive_success']}/{g['count']} | {g['sat_log_success']}/{g['count']} | {g['bt_success']}/{g['count']} | {g['validation_pass_rate']:.0f}% |")
     lines.append("")
 
     # ── Section 5: Inferential tests ──────────────────────────────────────────
@@ -552,12 +584,14 @@ def format_report(stats):
     else:
         lines.append("| Grid Size | N pairs | W statistic | p-value | Significant (α=0.05) | Mean BT | Mean SAT-C |")
         lines.append("|---|---|---|---|---|---|---|")
-        for size_str, wr in sorted(wilc.items(), key=lambda x: int(x[0])):
+        for size_key, wr in sorted(wilc.items(), key=lambda x: (str(x[0][0]), x[0][1])):
+            gen_name, size_val = size_key
+            label = f"{gen_name} {size_val}x{size_val}" if gen_name else f"{size_val}x{size_val}"
             if wr.get("skipped"):
-                lines.append(f"| {size_str}x{size_str} | — | — | — | — | — | — | *{wr['reason']}* |")
+                lines.append(f"| {label} | — | — | — | — | — | — | *{wr['reason']}* |")
             else:
                 sig = "Yes" if wr["significant_005"] else "No"
-                lines.append(f"| {size_str}x{size_str} | {wr['n_pairs']} | {wr['statistic']:.2f} | {wr['p_value']:.4f} | {sig} | {format_time(wr['mean_bt'])} | {format_time(wr['mean_sat'])} |")
+                lines.append(f"| {label} | {wr['n_pairs']} | {wr['statistic']:.2f} | {wr['p_value']:.4f} | {sig} | {format_time(wr['mean_bt'])} | {format_time(wr['mean_sat'])} |")
     lines.append("")
 
     # Friedman
@@ -569,12 +603,14 @@ def format_report(stats):
     else:
         lines.append("| Grid Size | N blocks | χ² | p-value | Kendall's W | Significant (α=0.05) |")
         lines.append("|---|---|---|---|---|---|")
-        for size_str, fr in sorted(fried.items(), key=lambda x: int(x[0])):
+        for size_key, fr in sorted(fried.items(), key=lambda x: (str(x[0][0]), x[0][1])):
+            gen_name, size_val = size_key
+            label = f"{gen_name} {size_val}x{size_val}" if gen_name else f"{size_val}x{size_val}"
             if fr.get("skipped"):
-                lines.append(f"| {size_str}x{size_str} | — | — | — | — | — | *{fr['reason']}* |")
+                lines.append(f"| {label} | — | — | — | — | — | *{fr['reason']}* |")
             else:
                 sig = "Yes" if fr["significant_005"] else "No"
-                lines.append(f"| {size_str}x{size_str} | {fr['n_blocks']} | {fr['chi2']:.2f} | {fr['p_value']:.4f} | {fr['kendall_w']:.3f} | {sig} |")
+                lines.append(f"| {label} | {fr['n_blocks']} | {fr['chi2']:.2f} | {fr['p_value']:.4f} | {fr['kendall_w']:.3f} | {sig} |")
     lines.append("")
 
     if not HAS_SCIPY:
@@ -586,7 +622,7 @@ def format_report(stats):
     lines.append("## 6. Key Findings")
     lines.append("")
     total_timeouts = sum(
-        g["sat_compact"]["timeout_count"] + g["sat_naive"]["timeout_count"] + g["backtracking"]["timeout_count"]
+        g["sat_compact"]["timeout_count"] + g["sat_naive"]["timeout_count"] + g["sat_log"]["timeout_count"] + g["backtracking"]["timeout_count"]
         for g in stats["groups"].values()
     )
     lines.append("1. **Solve-Only vs End-to-End**: SAT solve times alone understate the total cost; "
@@ -595,7 +631,7 @@ def format_report(stats):
                  "yielding faster SAT solver times in both solve-only and e2e metrics.")
     if total_timeouts > 0:
         lines.append(f"3. **Scaling**: {total_timeouts} run(s) hit the configured timeout. "
-                     "Upper-bound means treat each timeout as 600s; other runs complete normally.")
+                     "Upper-bound means treat each timeout as 120s; other runs complete normally.")
     else:
         lines.append("3. **Scaling**: No run hit the configured timeout in this dataset. "
                      "SAT Compact solve times stay roughly flat (~ms) as the grid grows, "

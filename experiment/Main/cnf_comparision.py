@@ -1,11 +1,11 @@
 """
 cnf_comparison.py
-Compares optimized (φ') vs unoptimized (φ) CNF encoding sizes across Sudoku sizes.
+Compares Optimized (φ'), Unoptimized (Naive φ), and Logarithmic (φ_log) CNF encoding sizes across Sudoku sizes.
 
-Unoptimized encoding: generates ALL clauses for ALL variables (N³ variables),
-ignoring any pre-assigned cells.
-
-Optimized encoding: uses the existing sudoku_to_cnf.py (Kwon & Jain φ').
+Encodings:
+1. Unoptimized / Naive (φ) : N³ variables, full clause set without clue pruning.
+2. Optimized (φ')           : Kwon & Jain clue-pruned extended one-hot encoding.
+3. Logarithmic (φ_log)      : Gavanelli log-support binary bit encoding with domain and XOR difference constraints.
 
 Run:
     python cnf_comparison.py                    # uses puzzles in ../Puzzles/
@@ -22,6 +22,7 @@ PUZZLES_DIR = os.path.join(SCRIPT_DIR, "..", "Puzzles")
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 sys.path.insert(0, SCRIPT_DIR)
+from log_encoder import encode_log
 
 # ── load sudoku_to_cnf for the optimized encoder ──────────────────────────────
 
@@ -123,10 +124,10 @@ def run_comparison(filter_sizes=None):
         sizes = [s for s in sizes if s in filter_sizes]
 
     print(f"\n{'Size':>6}  {'Clues':>6}  "
-          f"{'Unopt Vars':>12}  {'Opt Vars':>10}  {'Var Reduc%':>10}  "
-          f"{'Unopt Clauses':>14}  {'Opt Clauses':>12}  {'Clause Reduc%':>13}  "
-          f"{'Enc Time(s)':>11}")
-    print("-" * 110)
+          f"{'Naive Vars':>12}  {'Opt Vars':>10}  {'Log Vars':>10}  "
+          f"{'Naive Clauses':>14}  {'Opt Clauses':>12}  {'Log Clauses':>12}  "
+          f"{'Log Enc(s)':>11}")
+    print("-" * 115)
 
     rows = []
 
@@ -139,38 +140,39 @@ def run_comparison(filter_sizes=None):
             num_clues = sum(1 for r in puzzle for v in r if v != 0)
 
             # Unoptimized counts (analytic)
-            unopt_vars, unopt_clauses = unoptimized_counts(n, num_clues)
+            naive_vars, naive_clauses = unoptimized_counts(n, num_clues)
 
-            # Optimized counts (actually run the encoder)
-            t0 = time.time()
+            # Optimized counts
+            t0 = time.perf_counter()
             clauses, opt_vars, var_map, V0_list = enc.encode(n, puzzle)
-            enc_time = time.time() - t0
+            opt_time = time.perf_counter() - t0
             opt_clauses = len(clauses)
 
-            var_reduc    = 100.0 * (1 - opt_vars    / unopt_vars)    if unopt_vars    else 0
-            clause_reduc = 100.0 * (1 - opt_clauses / unopt_clauses) if unopt_clauses else 0
+            # Logarithmic counts
+            t0 = time.perf_counter()
+            log_clauses_list, log_vars, log_width = encode_log(n, puzzle)
+            log_time = time.perf_counter() - t0
+            log_clauses = len(log_clauses_list)
 
             print(f"{n:>4}x{n:<2}  {num_clues:>6}  "
-                  f"{unopt_vars:>12,}  {opt_vars:>10,}  {var_reduc:>9.1f}%  "
-                  f"{unopt_clauses:>14,}  {opt_clauses:>12,}  {clause_reduc:>12.1f}%  "
-                  f"{enc_time:>11.4f}")
+                  f"{naive_vars:>12,}  {opt_vars:>10,}  {log_vars:>10,}  "
+                  f"{naive_clauses:>14,}  {opt_clauses:>12,}  {log_clauses:>12,}  "
+                  f"{log_time:>11.4f}")
 
             size_rows.append(dict(
                 n=n, clues=num_clues,
-                unopt_vars=unopt_vars,   opt_vars=opt_vars,   var_reduc=var_reduc,
-                unopt_clauses=unopt_clauses, opt_clauses=opt_clauses, clause_reduc=clause_reduc,
-                enc_time=enc_time
+                naive_vars=naive_vars, opt_vars=opt_vars, log_vars=log_vars,
+                naive_clauses=naive_clauses, opt_clauses=opt_clauses, log_clauses=log_clauses,
+                opt_time=opt_time, log_time=log_time
             ))
 
         # Averages per size
         def avg(key): return sum(r[key] for r in size_rows) / len(size_rows)
         rows.append(dict(
             n=n,
-            unopt_vars=avg("unopt_vars"),       opt_vars=avg("opt_vars"),
-            var_reduc=avg("var_reduc"),
-            unopt_clauses=avg("unopt_clauses"),  opt_clauses=avg("opt_clauses"),
-            clause_reduc=avg("clause_reduc"),
-            enc_time=avg("enc_time")
+            naive_vars=avg("naive_vars"), opt_vars=avg("opt_vars"), log_vars=avg("log_vars"),
+            naive_clauses=avg("naive_clauses"), opt_clauses=avg("opt_clauses"), log_clauses=avg("log_clauses"),
+            opt_time=avg("opt_time"), log_time=avg("log_time")
         ))
 
     print()
@@ -198,48 +200,44 @@ def plot_comparison(rows):
     sizes   = [r["n"] for r in rows]
     xlbls   = [f"{n}×{n}" for n in sizes]
     x       = np.arange(len(sizes))
-    w       = 0.35
+    w       = 0.25
 
-    unopt_v = [r["unopt_vars"]    for r in rows]
+    naive_v = [r["naive_vars"]    for r in rows]
     opt_v   = [r["opt_vars"]      for r in rows]
-    unopt_c = [r["unopt_clauses"] for r in rows]
+    log_v   = [r["log_vars"]      for r in rows]
+    naive_c = [r["naive_clauses"] for r in rows]
     opt_c   = [r["opt_clauses"]   for r in rows]
-    var_red = [r["var_reduc"]     for r in rows]
-    cl_red  = [r["clause_reduc"]  for r in rows]
+    log_c   = [r["log_clauses"]   for r in rows]
 
-    C_UNOPT = "#DD8452"
+    C_NAIVE = "#8172B2"
     C_OPT   = "#4C72B0"
-    C_RED   = "#55A868"
+    C_LOG   = "#55A868"
 
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 6))
-    fig.suptitle("Optimized (φ') vs Unoptimized (φ) CNF Encoding",
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(15, 6))
+    fig.suptitle("Three-Way CNF Encoding Comparison (Naive vs Optimized vs Logarithmic)",
                  fontsize=14, fontweight="bold")
 
     # ── Variables ─────────────────────────────────────────────────────────────
-    ax1.bar(x - w/2, unopt_v, w, color=C_UNOPT, alpha=0.85, label="Unoptimized (φ)")
-    ax1.bar(x + w/2, opt_v,   w, color=C_OPT,   alpha=0.85, label="Optimized (φ')")
+    ax1.bar(x - w, naive_v, w, color=C_NAIVE, alpha=0.85, label="Naive (φ)")
+    ax1.bar(x,     opt_v,   w, color=C_OPT,   alpha=0.85, label="Optimized (φ')")
+    ax1.bar(x + w, log_v,   w, color=C_LOG,   alpha=0.85, label="Logarithmic (φ_log)")
     ax1.set_xticks(x); ax1.set_xticklabels(xlbls, fontsize=11)
     ax1.set_yscale("log")
     ax1.set_title("Variable Count", fontsize=12)
     ax1.set_ylabel("# Variables (log scale)")
     ax1.legend(fontsize=9)
     ax1.grid(axis="y", linestyle="--", alpha=0.4, which="both")
-    for i, (u, o, red) in enumerate(zip(unopt_v, opt_v, var_red)):
-        ax1.text(i, max(u, o) * 1.4, f"−{red:.0f}%",
-                 ha="center", fontsize=9, color=C_RED, fontweight="bold")
 
     # ── Clauses ───────────────────────────────────────────────────────────────
-    ax2.bar(x - w/2, unopt_c, w, color=C_UNOPT, alpha=0.85, label="Unoptimized (φ)")
-    ax2.bar(x + w/2, opt_c,   w, color=C_OPT,   alpha=0.85, label="Optimized (φ')")
+    ax2.bar(x - w, naive_c, w, color=C_NAIVE, alpha=0.85, label="Naive (φ)")
+    ax2.bar(x,     opt_c,   w, color=C_OPT,   alpha=0.85, label="Optimized (φ')")
+    ax2.bar(x + w, log_c,   w, color=C_LOG,   alpha=0.85, label="Logarithmic (φ_log)")
     ax2.set_xticks(x); ax2.set_xticklabels(xlbls, fontsize=11)
     ax2.set_yscale("log")
     ax2.set_title("Clause Count", fontsize=12)
     ax2.set_ylabel("# Clauses (log scale)")
     ax2.legend(fontsize=9)
     ax2.grid(axis="y", linestyle="--", alpha=0.4, which="both")
-    for i, (u, o, red) in enumerate(zip(unopt_c, opt_c, cl_red)):
-        ax2.text(i, max(u, o) * 1.4, f"−{red:.0f}%",
-                 ha="center", fontsize=9, color=C_RED, fontweight="bold")
 
     plt.tight_layout()
     out = os.path.join(OUTPUT_DIR, "cnf_encoding_comparison.png")

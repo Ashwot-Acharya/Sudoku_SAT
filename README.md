@@ -14,7 +14,7 @@ Sudoku generalized to an $n^2 \times n^2$ grid is **NP-complete** (Yato & Seta, 
 This project presents a rigorous, reproducible framework for:
 1. **Uniqueness Verification**: Implementing 4 distinct verification paradigms (SAT blocking clause, Unavoidable Sets, Deducibility Theorem, Solution Validation).
 2. **Dual CNF Encodings**: Comparing Naive Full Encoding ($\phi$, $O(n^3)$ variables) against Kwon & Jain's Compact Optimized Encoding ($\phi'$, variable pruning via fixed-cell propagation).
-3. **Procedural Dataset Generation & Benchmark**: Seed-controlled generator supporting sizes up to $64 \times 64$, curating Gordon Royle's 17-clue 9×9 minimum-clue dataset alongside procedurally generated instances.
+3. **Procedural Dataset Generation & Benchmark**: Seed-controlled legacy and back-circulant generators for sizes up to $64 \times 64$. Every puzzle seed and random choice is persisted.
 4. **Non-Parametric Statistical Suite**: Applying Friedman rank-sum tests, Wilcoxon signed-rank tests, Kendall's W, and rank-biserial effect sizes to evaluate solver scaling and encoding performance.
 
 ---
@@ -46,9 +46,10 @@ Sudoku_SAT/
 │   ├── encoder.txt              ← Encoding specification snippet
 │   └── decoder.txt              ← Decoding specification snippet
 ├── Results/
-│   ├── benchmark_results.csv    ← Raw empirical data (75 benchmark runs across 3 repeats)
+│   ├── benchmark_results_legacy.csv / benchmark_results_back_circulant.csv
+│   ├── benchmark_results_combined.csv  ← Shared analysis/plots
 │   ├── STATISTICAL_ANALYSIS.md  ← Full statistical report with hypothesis tests & effect sizes
-│   ├── Sol/                     ← Decoded solution grids for all solver runs
+│   ├── Solutions/<generator>/<puzzle>/  ← Consolidated + per-run results
 │   └── *.png                    ← Generated visualization plots
 └── Analysis/
     ├── analysis.md              ← Comprehensive multi-agent research analysis
@@ -122,11 +123,24 @@ Evaluated across **75 benchmark runs** (3 repeats, 25 puzzles, 5 sizes: $4\times
 
 ### Execution Commands
 
-1. **Run Full Unified Benchmark** (Dataset assembly + dual encoding + SAT + BT + Validation + Stats + Plots):
+1. **Run Full Unified Benchmark** (dataset assembly + three encodings + SAT + BT + validation + stats + shared plots). The default run generates **30 puzzles per size per generator** for both `legacy` and `back_circulant`, with a **120 s** solver timeout and **1 repeat**:
    ```bash
    cd experiment/Main
-   python3 unified_benchmark.py --sizes 4 9 16 25 36 --puzzles-per-size 5 --repeats 3 --seed 42 --timeout 30
+   python3 run_pipeline.py
    ```
+
+   Select one generator or change the workload:
+   ```bash
+   python3 run_pipeline.py --generator legacy --sizes 4 9 16 25 36 --puzzles-per-size 30 --repeats 1 --timeout 120
+   python3 run_pipeline.py --generator back_circulant --sizes 9 16 25 36
+   ```
+
+   Puzzles are written to `experiment/Puzzles/<generator>/` with the seed in the filename,
+   a `*_choices.json` sidecar, and `puzzle_seeds.csv`. Results are written to separate
+   `Results/benchmark_results_<generator>.csv` files plus a combined CSV for shared plots.
+   Solution artifacts live in `Results/Solutions/<generator>/<puzzle>/`, with consolidated
+   `SAT_compact.txt`, `SAT_naive.txt`, `SAT_log.txt`, `BACKTRACKING.txt`, and per-repeat
+   files under `runs/`. Disable them with `--no-save-solutions` / `--no-save-assignments`.
 
 2. **Run Uniqueness Verification Standalone**:
    ```bash

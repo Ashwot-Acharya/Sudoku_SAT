@@ -1,8 +1,8 @@
 """
 backtracking_solver.py
 Optimized backtracking solver with MRV + degree heuristic + forward checking.
-Supports a timeout (default 300 = 5 ). If timeout is hit, returns
-TIMEOUT_SENTINEL so the benchmark can mark it as ">10min".
+Supports a timeout (default 120 = 2 minutes ). If timeout is hit, returns
+TIMEOUT_SENTINEL so the benchmark can mark it as ">2 min".
 """
 
 import os
@@ -16,8 +16,8 @@ PUZZLES_DIR = os.path.join(SCRIPT_DIR, "..", "Puzzles")
 SOL_DIR     = os.path.join(SCRIPT_DIR, "..", "..", "Results", "Sol")
 os.makedirs(SOL_DIR, exist_ok=True)
 
-TIMEOUT_SECONDS  = 5 * 60
-TIMEOUT_SENTINEL = float("inf")   # used in benchmark to mean ">5 min"
+TIMEOUT_SECONDS  = 120
+TIMEOUT_SENTINEL = float("inf")   # used in benchmark to mean ">2 min"
 
 
 # ───────────────────────────────────────────────────────────────
@@ -51,7 +51,7 @@ def save_solution(grid, n, basename, elapsed, timed_out=False):
     out_path = os.path.join(SOL_DIR, basename + "_BT_solved.txt")
     with open(out_path, "w") as f:
         f.write(f"SIZE {n}\n")
-        f.write("SOLVE_TIME_SEC >300  (timeout at 5 min)\n" if timed_out
+        f.write("SOLVE_TIME_SEC >2min  (timeout at 2 min)\n" if timed_out
                 else f"SOLVE_TIME_SEC {elapsed:.6f}\n")
         f.write("METHOD Optimized_Backtracking\n")
         f.write("STATUS TIMEOUT\n" if timed_out else "STATUS SOLVED\n")
@@ -100,9 +100,6 @@ def build_domains(grid, n, peers):
     return domains
 
 
-# ───────────────────────────────────────────────────────────────
-# Solver
-# ───────────────────────────────────────────────────────────────
 
 def select_cell(domains, peers):
     return min(domains, key=lambda k: (len(domains[k]), -len(peers[k])))
@@ -140,9 +137,6 @@ def solve_recursive(grid, domains, peers):
     return False
 
 
-# ───────────────────────────────────────────────────────────────
-# Public API
-# ───────────────────────────────────────────────────────────────
 
 def solve_puzzle(filepath, verbose=True, timeout=TIMEOUT_SECONDS):
     """
@@ -163,7 +157,7 @@ def solve_puzzle(filepath, verbose=True, timeout=TIMEOUT_SECONDS):
         if verbose: print("✗ invalid puzzle (domain wipeout at start)")
         return None, 0.0
 
-    t0, timed_out = time.time(), False
+    t0, timed_out = time.perf_counter(), False
 
     use_signal = hasattr(signal, "SIGALRM")
     if use_signal:
@@ -178,7 +172,7 @@ def solve_puzzle(filepath, verbose=True, timeout=TIMEOUT_SECONDS):
         if use_signal:
             signal.alarm(0)
 
-    elapsed = time.time() - t0
+    elapsed = time.perf_counter() - t0
 
     if not timed_out and elapsed >= timeout:   # Windows fallback
         timed_out, success = True, False
@@ -190,20 +184,16 @@ def solve_puzzle(filepath, verbose=True, timeout=TIMEOUT_SECONDS):
         return None, TIMEOUT_SENTINEL
 
     if not success:
-        if verbose: print(f"✗ UNSOLVABLE ({elapsed:.3f}s)")
+        if verbose: print(f"✗ UNSOLVABLE ({elapsed:.6f}s)")
         err = os.path.join(SOL_DIR, basename + "_BT_UNSOLVABLE.txt")
         open(err, "w").write(f"STATUS UNSOLVABLE\nTIME {elapsed:.6f}\n")
         return None, elapsed
 
     sol_path = save_solution(grid, n, basename, elapsed)
     if verbose:
-        print(f"✓ {elapsed:.3f}s → {os.path.basename(sol_path)}")
+        print(f"✓ {elapsed:.6f}s → {os.path.basename(sol_path)}")
     return sol_path, elapsed
 
-
-# ───────────────────────────────────────────────────────────────
-# CLI
-# ───────────────────────────────────────────────────────────────
 
 def main():
     parser = argparse.ArgumentParser()

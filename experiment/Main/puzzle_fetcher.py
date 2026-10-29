@@ -372,7 +372,7 @@ TWENTY_FIVE_PUZZLES = [_make_grid(25, _gen25_clues(i)) for i in range(5)]
 #  36×36 — 5 puzzles
 #  Source: Procedurally generated with per-cell conflict checking.
 #  ~72 clues each. Primarily intended for SAT solver evaluation.
-#  Backtracking is EXPECTED to timeout at 10 minutes for these.
+#  Backtracking is EXPECTED to timeout at 15 minutes for these.
 # ══════════════════════════════════════════════════════════════════════════════
 
 def _gen36_clues(offset=0):

@@ -20,10 +20,13 @@ import matplotlib.patches as mpatches
 import numpy as np
 
 # ── colours & style ────────────────────────────────────────────
-C_SAT     = "#4C72B0"   # blue
+C_SAT     = "#4C72B0"   # compact blue
+C_NAIVE   = "#8172B2"   # purple
+C_LOG     = "#55A868"   # green
 C_BT      = "#DD8452"   # orange
 C_TIMEOUT = "#CC3333"   # red  (hatched)
-TIMEOUT_LABEL = ">10 min"
+TIMEOUT_SECONDS = 120.0 # 2 min
+TIMEOUT_LABEL = ">2 min"
 
 plt.rcParams.update({
     "font.family":       "DejaVu Sans",
@@ -36,22 +39,24 @@ plt.rcParams.update({
 })
 
 # ── group display order & titles ───────────────────────────────
-GROUP_ORDER  = ["4x4", "17-clue", "5-clue", "16x16", "25x25", "36x36"]
+GROUP_ORDER  = ["4x4", "17-clue", "9x9-generated", "5-clue", "16x16", "25x25", "36x36"]
 GROUP_TITLES = {
-    "4x4":     "4×4 Sudoku",
-    "17-clue": "9×9 Sudoku — 17-Clue (Royle)",
-    "5-clue":  "9×9 Sudoku — 5-Clue",
-    "16x16":   "16×16 Sudoku",
-    "25x25":   "25×25 Sudoku",
-    "36x36":   "36×36 Sudoku",
+    "4x4":          "4×4 Sudoku",
+    "17-clue":      "9×9 Sudoku — 17-Clue (Royle)",
+    "9x9-generated": "9×9 Sudoku — Generated",
+    "5-clue":       "9×9 Sudoku — 5-Clue",
+    "16x16":        "16×16 Sudoku",
+    "25x25":        "25×25 Sudoku",
+    "36x36":        "36×36 Sudoku",
 }
 GROUP_SHORT = {
-    "4x4":     "4×4",
-    "17-clue": "9×9\n17-clue",
-    "5-clue":  "9×9\n5-clue",
-    "16x16":   "16×16",
-    "25x25":   "25×25",
-    "36x36":   "36×36",
+    "4x4":          "4×4",
+    "17-clue":      "9×9\n17-clue",
+    "9x9-generated": "9×9\ngenerated",
+    "5-clue":       "9×9\n5-clue",
+    "16x16":        "16×16",
+    "25x25":        "25×25",
+    "36x36":        "36×36",
 }
 
 
@@ -82,6 +87,7 @@ def load_csv(path):
                 sat_compact = parse_float("sat_time")
 
             sat_naive = parse_float("sat_naive_time")
+            sat_log = parse_float("sat_log_time")
 
             compact_v = parse_int("compact_vars")
             if compact_v == 0:
@@ -95,6 +101,7 @@ def load_csv(path):
 
             rows.append({
                 "group":            row.get("group", ""),
+                "generator":        row.get("generator", ""),
                 "size":             int(row.get("size", 0)),
                 "puzzle":           puzzle_name,
                 "num_clues":        parse_int("num_clues"),
@@ -104,20 +111,57 @@ def load_csv(path):
                 "compact_clauses":  compact_c,
                 "naive_vars":       parse_int("naive_vars"),
                 "naive_clauses":    parse_int("naive_clauses"),
+                "log_vars":         parse_int("log_vars"),
+                "log_clauses":      parse_int("log_clauses"),
                 "enc_time":         parse_float("compact_enc_time") if not math.isnan(parse_float("compact_enc_time")) else parse_float("enc_time"),
                 "compact_enc_time": parse_float("compact_enc_time"),
                 "naive_enc_time":   parse_float("naive_enc_time"),
                 "sat_time":         sat_compact,
                 "sat_compact_time": sat_compact,
                 "sat_naive_time":   sat_naive,
+                "sat_log_time":     sat_log,
                 "bt_time":          parse_float("bt_time"),
                 "sat_status":       row.get("sat_compact_status", "") or row.get("sat_status", ""),
                 "sat_compact_status": row.get("sat_compact_status", "") or row.get("sat_status", ""),
                 "sat_naive_status": row.get("sat_naive_status", ""),
+                "sat_log_status":   row.get("sat_log_status", ""),
                 "bt_status":        row.get("bt_status", ""),
                 "validator_passed": row.get("validator_passed", "True").lower() == "true",
             })
-    return rows
+    return aggregate_repeats(rows)
+
+
+_TIME_FIELDS = (
+    "sat_time", "sat_compact_time", "sat_naive_time", "sat_log_time",
+    "bt_time", "enc_time", "compact_enc_time", "naive_enc_time",
+)
+
+
+def aggregate_repeats(rows):
+    """Collapse repeated runs of the same puzzle into one row (mean time).
+
+    Any timeout among the repeats makes the aggregate a timeout (inf).
+    Repeated rows otherwise share the same puzzle/CNF data, so the mean is
+    only applied to timing fields; all other fields are taken from the first
+    occurrence.  Row order follows first appearance.
+    """
+    merged = {}
+    order = []
+    for r in rows:
+        key = (r["group"], r["puzzle"])
+        if key not in merged:
+            merged[key] = dict(r)
+            order.append(key)
+            continue
+        agg = merged[key]
+        for field in _TIME_FIELDS:
+            vals = [agg[field], r[field]]
+            if any(is_timeout(v) for v in vals):
+                agg[field] = float("inf")
+            else:
+                finite = [v for v in vals if is_valid(v)]
+                agg[field] = sum(finite) / len(finite) if finite else float("nan")
+    return [merged[k] for k in order]
 
 
 
@@ -141,8 +185,9 @@ def puzzle_num(name):
 def timeout_bar_height(all_rows):
     """Height to draw timeout bars: 3× the largest finite solve time."""
     finite = [v for r in all_rows
-              for v in (r["sat_time"], r["bt_time"]) if is_valid(v)]
-    return max(finite) * 3 if finite else 600.0
+              for v in (r["sat_compact_time"], r["sat_naive_time"], r["sat_log_time"], r["bt_time"])
+              if is_valid(v)]
+    return max(finite) * 3 if finite else TIMEOUT_SECONDS
 
 
 def add_bar(ax, x, height, width, color, timeout=False, label_val=None):
@@ -160,7 +205,11 @@ def add_bar(ax, x, height, width, color, timeout=False, label_val=None):
 def standard_legend(ax, has_sat=True, has_timeout=False):
     patches = []
     if has_sat:
-        patches.append(mpatches.Patch(color=C_SAT, label="SAT Solver (satch)"))
+        patches.extend((
+            mpatches.Patch(color=C_SAT, label="SAT Compact (CaDiCaL)"),
+            mpatches.Patch(color=C_NAIVE, label="SAT Naive (CaDiCaL)"),
+            mpatches.Patch(color=C_LOG, label="SAT Logarithmic (CaDiCaL)"),
+        ))
     patches.append(mpatches.Patch(color=C_BT, label="Backtracking (MRV + FC)"))
     if has_timeout:
         patches.append(mpatches.Patch(color=C_TIMEOUT, label=TIMEOUT_LABEL,
@@ -184,14 +233,17 @@ def use_log(group_rows):
 def plot_group(group, rows, out_dir, tb_h):
     n      = len(rows)
     x      = np.arange(n)
-    w      = 0.32
+    w      = 0.19
     title  = GROUP_TITLES.get(group, group)
     labels = [puzzle_num(r["puzzle"]) for r in rows]
 
-    sat_times = [r["sat_time"] for r in rows]
-    bt_times  = [r["bt_time"]  for r in rows]
-    has_sat   = any(is_valid(v) for v in sat_times)
-    any_to    = any(is_timeout(v) for v in sat_times + bt_times)
+    compact_times = [r["sat_compact_time"] for r in rows]
+    naive_times = [r["sat_naive_time"] for r in rows]
+    log_times = [r["sat_log_time"] for r in rows]
+    bt_times = [r["bt_time"] for r in rows]
+    all_times = compact_times + naive_times + log_times + bt_times
+    has_sat = any(is_valid(v) or is_timeout(v) for v in compact_times + naive_times + log_times)
+    any_to = any(is_timeout(v) for v in all_times)
 
     log = use_log(rows)
 
@@ -199,20 +251,16 @@ def plot_group(group, rows, out_dir, tb_h):
     ax.set_title(title, fontsize=14, fontweight="bold", pad=14)
 
     for i in range(n):
-        sv, bv = sat_times[i], bt_times[i]
-
-        # SAT bar
-        if has_sat:
-            if is_timeout(sv):
-                add_bar(ax, x[i] - w/2, tb_h, w, C_TIMEOUT, timeout=True)
-            elif is_valid(sv):
-                add_bar(ax, x[i] - w/2, sv, w, C_SAT, label_val=sv)
-
-        # Backtracking bar
-        if is_timeout(bv):
-            add_bar(ax, x[i] + w/2, tb_h, w, C_TIMEOUT, timeout=True)
-        elif is_valid(bv):
-            add_bar(ax, x[i] + w/2, bv, w, C_BT, label_val=bv)
+        for offset, value, color in (
+            (-1.5 * w, compact_times[i], C_SAT),
+            (-0.5 * w, naive_times[i], C_NAIVE),
+            (0.5 * w, log_times[i], C_LOG),
+            (1.5 * w, bt_times[i], C_BT),
+        ):
+            if is_timeout(value):
+                add_bar(ax, x[i] + offset, tb_h, w, C_TIMEOUT, timeout=True)
+            elif is_valid(value):
+                add_bar(ax, x[i] + offset, value, w, color, label_val=value)
 
     ax.set_xticks(x)
     ax.set_xticklabels(labels, fontsize=11)
@@ -223,7 +271,7 @@ def plot_group(group, rows, out_dir, tb_h):
 
     if log:
         ax.set_yscale("log")
-        finite = [v for v in sat_times + bt_times if is_valid(v)]
+        finite = [v for v in all_times if is_valid(v)]
         ax.set_ylim(bottom=min(finite) * 0.3 if finite else 1e-5)
     else:
         ax.set_ylim(bottom=0)
@@ -254,9 +302,11 @@ def plot_group_line(group, rows, out_dir, tb_h):
     n      = len(rows)
     xs     = list(range(1, n + 1))   # 1-indexed for cleaner display
 
-    sat_times = [r["sat_time"] for r in rows]
-    bt_times  = [r["bt_time"]  for r in rows]
-    has_sat   = any(is_valid(v) or is_timeout(v) for v in sat_times)
+    compact_times = [r["sat_compact_time"] for r in rows]
+    naive_times = [r["sat_naive_time"] for r in rows]
+    log_times = [r["sat_log_time"] for r in rows]
+    bt_times = [r["bt_time"] for r in rows]
+    has_sat = any(is_valid(v) or is_timeout(v) for v in compact_times + naive_times + log_times)
 
     fig, ax = plt.subplots(figsize=(max(7, n * 1.4 + 2), 5.5))
     ax.set_title(title + " — Line Chart", fontsize=14, fontweight="bold", pad=14)
@@ -285,7 +335,9 @@ def plot_group_line(group, rows, out_dir, tb_h):
                             color=C_TIMEOUT, fontweight="bold")
 
     if has_sat:
-        draw_line(sat_times, C_SAT, "SAT Solver (satch)", "o")
+        draw_line(compact_times, C_SAT, "SAT Compact (CaDiCaL)", "o")
+        draw_line(naive_times, C_NAIVE, "SAT Naive (CaDiCaL)", "^")
+        draw_line(log_times, C_LOG, "SAT Logarithmic (CaDiCaL)", "D")
     draw_line(bt_times, C_BT, "Backtracking (MRV + FC)", "s")
 
     ax.set_xticks(xs)
@@ -294,7 +346,7 @@ def plot_group_line(group, rows, out_dir, tb_h):
     ax.set_ylabel("Solve Time (seconds — log scale)", fontsize=12)
     ax.set_yscale("log")
 
-    all_finite = [v for v in sat_times + bt_times if is_valid(v)]
+    all_finite = [v for v in compact_times + naive_times + log_times + bt_times if is_valid(v)]
     if all_finite:
         ax.set_ylim(bottom=min(all_finite) * 0.3)
 
@@ -315,13 +367,17 @@ def plot_group_line(group, rows, out_dir, tb_h):
 
 def plot_overview(all_rows, out_dir, tb_h):
     from collections import defaultdict
-    agg = defaultdict(lambda: {"sat": [], "bt": []})
+    methods = (("compact", "sat_compact_time"), ("naive", "sat_naive_time"),
+               ("log", "sat_log_time"), ("bt", "bt_time"))
+    agg = defaultdict(lambda: {name: [] for name, _ in methods})
     for r in all_rows:
         g = r["group"]
-        if is_valid(r["sat_time"]):    agg[g]["sat"].append(r["sat_time"])
-        elif is_timeout(r["sat_time"]): agg[g]["sat"].append(tb_h)
-        if is_valid(r["bt_time"]):     agg[g]["bt"].append(r["bt_time"])
-        elif is_timeout(r["bt_time"]): agg[g]["bt"].append(tb_h)
+        for name, field in methods:
+            value = r[field]
+            if is_valid(value):
+                agg[g][name].append(value)
+            elif is_timeout(value):
+                agg[g][name].append(tb_h)
 
     def mean_or_timeout(lst):
         if not lst: return float("nan")
@@ -329,37 +385,41 @@ def plot_overview(all_rows, out_dir, tb_h):
         return sum(lst) / len(lst)
 
     groups  = [g for g in GROUP_ORDER if g in agg]
+    groups += sorted(g for g in agg if g not in GROUP_ORDER)
     xlabels = [GROUP_SHORT.get(g, g) for g in groups]
     x       = np.arange(len(groups))
-    w       = 0.32
+    w       = 0.19
 
-    sat_m = [mean_or_timeout(agg[g]["sat"]) for g in groups]
-    bt_m  = [mean_or_timeout(agg[g]["bt"])  for g in groups]
-    has_sat = any(is_valid(v) or is_timeout(v) for v in sat_m)
-    any_to  = any(is_timeout(v) for v in sat_m + bt_m)
+    compact_m = [mean_or_timeout(agg[g]["compact"]) for g in groups]
+    naive_m = [mean_or_timeout(agg[g]["naive"]) for g in groups]
+    log_m = [mean_or_timeout(agg[g]["log"]) for g in groups]
+    bt_m = [mean_or_timeout(agg[g]["bt"]) for g in groups]
+    all_means = compact_m + naive_m + log_m + bt_m
+    has_sat = any(is_valid(v) or is_timeout(v) for v in compact_m + naive_m + log_m)
+    any_to = any(is_timeout(v) for v in all_means)
 
     fig, ax = plt.subplots(figsize=(max(9, len(groups) * 1.6 + 1.5), 5.5))
     ax.set_title("Benchmark Overview: SAT vs Backtracking (mean per type)",
                  fontsize=14, fontweight="bold", pad=14)
 
     for i in range(len(groups)):
-        sv, bv = sat_m[i], bt_m[i]
-        if has_sat:
-            if is_timeout(sv):
-                add_bar(ax, x[i] - w/2, tb_h, w, C_TIMEOUT, timeout=True)
-            elif is_valid(sv):
-                add_bar(ax, x[i] - w/2, sv, w, C_SAT, label_val=sv)
-        if is_timeout(bv):
-            add_bar(ax, x[i] + w/2, tb_h, w, C_TIMEOUT, timeout=True)
-        elif is_valid(bv):
-            add_bar(ax, x[i] + w/2, bv, w, C_BT, label_val=bv)
+        for offset, value, color in (
+            (-1.5 * w, compact_m[i], C_SAT),
+            (-0.5 * w, naive_m[i], C_NAIVE),
+            (0.5 * w, log_m[i], C_LOG),
+            (1.5 * w, bt_m[i], C_BT),
+        ):
+            if is_timeout(value):
+                add_bar(ax, x[i] + offset, tb_h, w, C_TIMEOUT, timeout=True)
+            elif is_valid(value):
+                add_bar(ax, x[i] + offset, value, w, color, label_val=value)
 
     ax.set_xticks(x)
     ax.set_xticklabels(xlabels, fontsize=11)
     ax.set_xlabel("Puzzle Type", fontsize=12)
     ax.set_ylabel("Mean Solve Time (seconds — log scale)", fontsize=12)
     ax.set_yscale("log")
-    finite = [v for v in sat_m + bt_m if is_valid(v)]
+    finite = [v for v in all_means if is_valid(v)]
     ax.set_ylim(bottom=min(finite) * 0.2 if finite else 1e-5)
     ax.grid(axis="y", which="both", zorder=0)
     standard_legend(ax, has_sat=has_sat, has_timeout=any_to)
@@ -377,13 +437,15 @@ def plot_overview(all_rows, out_dir, tb_h):
 
 def plot_scaling(all_rows, out_dir, tb_h):
     from collections import defaultdict
-    agg = defaultdict(lambda: {"sat": [], "bt": []})
+    agg = defaultdict(lambda: {"compact": [], "naive": [], "log": [], "bt": []})
     for r in all_rows:
         g = r["group"]
-        if is_valid(r["sat_time"]):     agg[g]["sat"].append(r["sat_time"])
-        elif is_timeout(r["sat_time"]): agg[g]["sat"].append(float("inf"))
-        if is_valid(r["bt_time"]):      agg[g]["bt"].append(r["bt_time"])
-        elif is_timeout(r["bt_time"]):  agg[g]["bt"].append(float("inf"))
+        for name in ("compact", "naive", "log"):
+            v = r[f"sat_{name}_time"]
+            if is_valid(v):     agg[g][name].append(v)
+            elif is_timeout(v): agg[g][name].append(float("inf"))
+        if is_valid(r["bt_time"]):     agg[g]["bt"].append(r["bt_time"])
+        elif is_timeout(r["bt_time"]): agg[g]["bt"].append(float("inf"))
 
     def mean_or_inf(lst):
         if not lst: return float("nan")
@@ -391,10 +453,13 @@ def plot_scaling(all_rows, out_dir, tb_h):
         return sum(lst) / len(lst)
 
     groups  = [g for g in GROUP_ORDER if g in agg]
+    groups += sorted(g for g in agg if g not in GROUP_ORDER)
     xlabels = [GROUP_SHORT.get(g, g).replace("\n", " ") for g in groups]
-    sat_m   = [mean_or_inf(agg[g]["sat"]) for g in groups]
-    bt_m    = [mean_or_inf(agg[g]["bt"])  for g in groups]
-    has_sat = any(is_valid(v) or is_timeout(v) for v in sat_m)
+    compact_m = [mean_or_inf(agg[g]["compact"]) for g in groups]
+    naive_m   = [mean_or_inf(agg[g]["naive"])   for g in groups]
+    log_m     = [mean_or_inf(agg[g]["log"])     for g in groups]
+    bt_m      = [mean_or_inf(agg[g]["bt"])      for g in groups]
+    has_sat = any(is_valid(v) or is_timeout(v) for v in compact_m + naive_m + log_m)
 
     fig, ax = plt.subplots(figsize=(max(9, len(groups) * 1.5 + 1.5), 5.5))
     ax.set_title("Solve Time Scaling Across Puzzle Types",
@@ -414,13 +479,15 @@ def plot_scaling(all_rows, out_dir, tb_h):
                     label=f"{label} — {TIMEOUT_LABEL}")
 
     if has_sat:
-        draw_line(sat_m, C_SAT, "SAT Solver (satch)", "o")
+        draw_line(compact_m, C_SAT,   "SAT Compact (CaDiCaL)", "o")
+        draw_line(naive_m,   C_NAIVE, "SAT Naive (CaDiCaL)",   "^")
+        draw_line(log_m,     C_LOG,   "SAT Log (CaDiCaL)",     "D")
     draw_line(bt_m, C_BT, "Backtracking (MRV + FC)", "s")
 
     ax.set_xlabel("Puzzle Type", fontsize=12)
     ax.set_ylabel("Mean Solve Time (seconds — log scale)", fontsize=12)
     ax.set_yscale("log")
-    finite = [v for v in sat_m + bt_m if is_valid(v)]
+    finite = [v for v in compact_m + naive_m + log_m + bt_m if is_valid(v)]
     ax.set_ylim(bottom=min(finite) * 0.2 if finite else 1e-5)
     ax.grid(True, which="both", zorder=0)
     ax.legend(fontsize=9, loc="upper left", framealpha=0.9, edgecolor="#cccccc")
@@ -441,12 +508,14 @@ def plot_size_comparison(all_rows, out_dir, tb_h):
     """
     Groups ALL puzzles by grid SIZE (4, 9, 16, 25, 36),
     averages SAT and BT times, and plots side-by-side.
-    If ANY puzzle in a size group timed out -> shows >10 min bar.
+    If ANY puzzle in a size group timed out -> shows >2 min bar.
     """
     from collections import defaultdict
-    size_data = defaultdict(lambda: {"sat": [], "bt": []})
+    size_data = defaultdict(lambda: {"compact": [], "naive": [], "log": [], "bt": []})
     for r in all_rows:
-        size_data[r["size"]]["sat"].append(r["sat_time"])
+        size_data[r["size"]]["compact"].append(r["sat_compact_time"])
+        size_data[r["size"]]["naive"].append(r["sat_naive_time"])
+        size_data[r["size"]]["log"].append(r["sat_log_time"])
         size_data[r["size"]]["bt"].append(r["bt_time"])
 
     sizes = sorted(size_data.keys())
@@ -456,40 +525,42 @@ def plot_size_comparison(all_rows, out_dir, tb_h):
         finite = [v for v in lst if is_valid(v)]
         return sum(finite) / len(finite) if finite else float("nan")
 
-    sat_avgs = [avg(size_data[s]["sat"]) for s in sizes]
-    bt_avgs  = [avg(size_data[s]["bt"])  for s in sizes]
-    counts   = [len(size_data[s]["sat"]) for s in sizes]
-    has_sat  = any(is_valid(v) or is_timeout(v) for v in sat_avgs)
-    any_to   = any(is_timeout(v) for v in sat_avgs + bt_avgs)
+    compact_avgs = [avg(size_data[s]["compact"]) for s in sizes]
+    naive_avgs   = [avg(size_data[s]["naive"])   for s in sizes]
+    log_avgs     = [avg(size_data[s]["log"])     for s in sizes]
+    bt_avgs      = [avg(size_data[s]["bt"])      for s in sizes]
+    counts       = [len(size_data[s]["bt"])      for s in sizes]
+    has_sat      = any(is_valid(v) or is_timeout(v) for v in compact_avgs + naive_avgs + log_avgs)
+    any_to       = any(is_timeout(v) for v in compact_avgs + naive_avgs + log_avgs + bt_avgs)
 
     x       = np.arange(len(sizes))
-    w       = 0.32
+    w       = 0.19
     xlabels = [f"{s}\u00d7{s}\n(n={counts[i]})" for i, s in enumerate(sizes)]
 
     fig, ax = plt.subplots(figsize=(max(9, len(sizes) * 1.8 + 2), 6))
     ax.set_title(
-        "SAT vs Backtracking — Average Solve Time by Grid Size",
+        "SAT Encodings vs Backtracking — Average Solve Time by Grid Size",
         fontsize=14, fontweight="bold", pad=14
     )
 
     for i in range(len(sizes)):
-        sv, bv = sat_avgs[i], bt_avgs[i]
-        if has_sat:
-            if is_timeout(sv):
-                add_bar(ax, x[i] - w/2, tb_h, w, C_TIMEOUT, timeout=True)
-            elif is_valid(sv):
-                add_bar(ax, x[i] - w/2, sv, w, C_SAT, label_val=sv)
-        if is_timeout(bv):
-            add_bar(ax, x[i] + w/2, tb_h, w, C_TIMEOUT, timeout=True)
-        elif is_valid(bv):
-            add_bar(ax, x[i] + w/2, bv, w, C_BT, label_val=bv)
+        for offset, val, color in (
+            (-1.5 * w, compact_avgs[i], C_SAT),
+            (-0.5 * w, naive_avgs[i], C_NAIVE),
+            (0.5 * w, log_avgs[i], C_LOG),
+            (1.5 * w, bt_avgs[i], C_BT),
+        ):
+            if is_timeout(val):
+                add_bar(ax, x[i] + offset, tb_h, w, C_TIMEOUT, timeout=True)
+            elif is_valid(val):
+                add_bar(ax, x[i] + offset, val, w, color, label_val=val)
 
     ax.set_xticks(x)
     ax.set_xticklabels(xlabels, fontsize=11)
     ax.set_xlabel("Grid Size  (n = number of puzzles averaged)", fontsize=12)
     ax.set_ylabel("Average Solve Time (seconds — log scale)", fontsize=12)
     ax.set_yscale("log")
-    finite = [v for v in sat_avgs + bt_avgs if is_valid(v)]
+    finite = [v for v in compact_avgs + naive_avgs + log_avgs + bt_avgs if is_valid(v)]
     ax.set_ylim(bottom=min(finite) * 0.2 if finite else 1e-5)
     ax.grid(axis="y", which="both", zorder=0)
 
@@ -514,13 +585,13 @@ def plot_size_comparison(all_rows, out_dir, tb_h):
 
 def plot_speedup(all_rows, out_dir):
     """
-    For each grid size compute speedup = avg_bt / avg_sat.
-    Bar > 1: SAT is faster. Bar < 1: BT is faster.
+    For each grid size compute speedup = avg_bt / avg_compact.
+    Bar > 1: SAT Compact is faster. Bar < 1: BT is faster.
     """
     from collections import defaultdict
-    size_data = defaultdict(lambda: {"sat": [], "bt": []})
+    size_data = defaultdict(lambda: {"compact": [], "bt": []})
     for r in all_rows:
-        size_data[r["size"]]["sat"].append(r["sat_time"])
+        size_data[r["size"]]["compact"].append(r["sat_compact_time"])
         size_data[r["size"]]["bt"].append(r["bt_time"])
 
     sizes = sorted(size_data.keys())
@@ -531,15 +602,15 @@ def plot_speedup(all_rows, out_dir):
 
     speedups, bar_colors, annotations, xlabels = [], [], [], []
     for s in sizes:
-        sat_a    = avg_finite(size_data[s]["sat"])
+        sat_a    = avg_finite(size_data[s]["compact"])
         bt_a     = avg_finite(size_data[s]["bt"])
         bt_to    = any(is_timeout(v) for v in size_data[s]["bt"])
         xlabels.append(f"{s}\u00d7{s}")
 
         if bt_to and sat_a:
-            speedups.append(600.0 / sat_a)
+            speedups.append(TIMEOUT_SECONDS / sat_a)
             bar_colors.append(C_SAT)
-            annotations.append("BT >10min")
+            annotations.append("BT >2min")
         elif sat_a and bt_a and sat_a > 0:
             ratio = bt_a / sat_a
             speedups.append(ratio)
@@ -552,8 +623,8 @@ def plot_speedup(all_rows, out_dir):
 
     fig, ax = plt.subplots(figsize=(max(8, len(sizes) * 1.8 + 2), 5.5))
     ax.set_title(
-        "SAT Speedup over Backtracking by Grid Size\n"
-        "(value > 1 \u2192 SAT faster;  value < 1 \u2192 Backtracking faster)",
+        "SAT Compact Speedup over Backtracking by Grid Size\n"
+        "(value > 1 \u2192 SAT Compact faster;  value < 1 \u2192 Backtracking faster)",
         fontsize=13, fontweight="bold", pad=14
     )
 
@@ -566,12 +637,12 @@ def plot_speedup(all_rows, out_dir):
 
     ax.axhline(1, color="#555555", lw=1.5, ls="--", zorder=2)
     ax.set_xlabel("Grid Size", fontsize=12)
-    ax.set_ylabel("Speedup  (avg BT time \u00f7 avg SAT time)", fontsize=12)
+    ax.set_ylabel("Speedup  (avg BT time \u00f7 avg SAT Compact time)", fontsize=12)
     ax.set_yscale("log")
     ax.set_ylim(bottom=0.1)
     ax.grid(axis="y", which="both", zorder=0)
 
-    sat_p = mpatches.Patch(color=C_SAT, label="SAT faster")
+    sat_p = mpatches.Patch(color=C_SAT, label="SAT Compact faster")
     bt_p  = mpatches.Patch(color=C_BT,  label="Backtracking faster")
     eq_l  = plt.Line2D([0],[0], color="#555555", lw=1.5, ls="--", label="Equal speed (1\u00d7)")
     ax.legend(handles=[sat_p, bt_p, eq_l], fontsize=9,
@@ -596,23 +667,38 @@ def plot_cnf_stats(rows, out_dir):
     for g, g_rows in groups.items():
         n      = len(g_rows)
         x      = np.arange(n)
-        w      = 0.35
+        w      = 0.26
         labels = [puzzle_num(r["puzzle"]) for r in g_rows]
 
-        vars_vals    = [r["cnf_vars"] for r in g_rows]
-        clauses_vals = [r["cnf_clauses"] for r in g_rows]
+        fig, (ax_v, ax_c) = plt.subplots(
+            1, 2, figsize=(max(12, n * 2.4), 5), sharex=True
+        )
+        panels = (
+            (ax_v, "CNF Variables", "Variables", (
+                ("Naive",   "naive_vars",    C_NAIVE),
+                ("Compact", "compact_vars",  C_SAT),
+                ("Log",     "log_vars",      C_LOG),
+            )),
+            (ax_c, "CNF Clauses", "Clauses", (
+                ("Naive",   "naive_clauses",   C_NAIVE),
+                ("Compact", "compact_clauses", C_SAT),
+                ("Log",     "log_clauses",     C_LOG),
+            )),
+        )
+        for ax, title, ylabel, series in panels:
+            for i, (label, field, color) in enumerate(series):
+                ax.bar(x + (i - 1) * w, [r[field] for r in g_rows],
+                       width=w, label=label, color=color)
+            ax.set_title(title, fontsize=12)
+            ax.set_ylabel(ylabel, fontsize=12)
+            ax.set_xlabel("Puzzle", fontsize=11)
+            ax.set_xticks(x)
+            ax.set_xticklabels(labels, fontsize=10)
+            ax.legend(fontsize=9)
+            ax.grid(axis="y", linestyle="--", alpha=0.5)
 
-        fig, ax = plt.subplots(figsize=(max(7, n * 1.6), 5))
-        ax.bar(x - w/2, vars_vals, width=w, label="CNF Variables", color="#5DADE2")
-        ax.bar(x + w/2, clauses_vals, width=w, label="CNF Clauses", color="#F5B041")
-
-        ax.set_xticks(x)
-        ax.set_xticklabels(labels, fontsize=11)
-        ax.set_xlabel("Puzzle", fontsize=12)
-        ax.set_ylabel("Count", fontsize=12)
-        ax.set_title(f"CNF Variables & Clauses — {GROUP_TITLES.get(g,g)}", fontsize=14)
-        ax.legend(fontsize=9)
-        ax.grid(axis="y", linestyle="--", alpha=0.5)
+        fig.suptitle(f"CNF Encoding Size — {GROUP_TITLES.get(g,g)}",
+                     fontsize=14, fontweight="bold")
 
         safe  = g.replace("/", "_").replace(" ", "_")
         fname = os.path.join(out_dir, f"cnf_{safe}.png")

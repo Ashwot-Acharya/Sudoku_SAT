@@ -24,7 +24,7 @@ from sudoku_to_cnf import encode
 # 1. SAT Blocking Clause Method
 # ────────────────────────────────────────────────────────────────────────────────
 
-def sat_blocking_check(puzzle, n, solver_path, timeout=600):
+def sat_blocking_check(puzzle, n, solver_path, timeout=120):
     """
     SAT-based blocking clause method for uniqueness verification.
     
@@ -530,7 +530,7 @@ def validate_solution(grid, n):
 # 5. Full Uniqueness Check (Combined)
 # ────────────────────────────────────────────────────────────────────────────────
 
-def full_uniqueness_check(puzzle, n, solver_path, solution_grid=None, timeout=600):
+def full_uniqueness_check(puzzle, n, solver_path, solution_grid=None, timeout=120):
     """
     Runs all applicable uniqueness check methods and returns a combined report.
     

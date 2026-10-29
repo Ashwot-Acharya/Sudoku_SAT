@@ -22,7 +22,7 @@ def find_solver(preferred=None):
     candidates = []
     if preferred:
         candidates.append(preferred)
-    for name in ["satch", "minisat", "picosat", "glucose", "Solver"]:
+    for name in ["cadical", "/usr/sbin/cadical", "satch", "minisat", "picosat", "glucose", "Solver"]:
         candidates.append(os.path.join(exe_dir, name))
         candidates.append(name)
 
@@ -40,7 +40,7 @@ def find_solver(preferred=None):
 
 # ── run solver ─────────────────────────────────────────────────────────────────
 
-def run_solver(solver, cnf_path, timeout=3600):
+def _run_solver_impl(solver, cnf_path, timeout=120):
     solver_name = os.path.basename(solver).lower()
     out_file    = os.path.join(TEMP_DIR, os.path.basename(cnf_path) + ".out")
 
@@ -49,12 +49,13 @@ def run_solver(solver, cnf_path, timeout=3600):
     else:
         cmd = [solver, cnf_path]   # satch, picosat
 
-    t0 = time.time()
+    t0 = time.perf_counter()
     try:
         proc = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
     except subprocess.TimeoutExpired:
-        return False, [], time.time() - t0
-    elapsed = time.time() - t0
+        return False, [], time.perf_counter() - t0, []
+
+    elapsed = time.perf_counter() - t0
 
     # ── SAT/UNSAT decision ─────────────────────────────────────
     # returncode: satch uses 10=SAT, 20=UNSAT (IPASIR standard)
@@ -76,13 +77,15 @@ def run_solver(solver, cnf_path, timeout=3600):
             sat = False
 
     if not sat:
-        return False, [], elapsed
+        return False, [], elapsed, []
 
     # ── parse "v" lines for variable assignment ────────────────
     assignment = []
+    raw_lines = []
     for line in proc.stdout.splitlines():
         s = line.strip()
         if s.startswith("v ") or s == "v":
+            raw_lines.append(s)
             for tok in s.split()[1:]:
                 try:
                     lit = int(tok)
@@ -96,9 +99,11 @@ def run_solver(solver, cnf_path, timeout=3600):
         with open(out_file) as f:
             content = f.read()
         for line in content.splitlines():
-            if line.strip() in ("SAT", "UNSAT", ""):
+            stripped = line.strip()
+            if stripped in ("SAT", "UNSAT", ""):
                 continue
-            for tok in line.split():
+            raw_lines.append(stripped)
+            for tok in stripped.split():
                 try:
                     lit = int(tok)
                     if lit > 0:
@@ -106,7 +111,16 @@ def run_solver(solver, cnf_path, timeout=3600):
                 except ValueError:
                     pass
 
-    return True, assignment, elapsed
+    return True, assignment, elapsed, raw_lines
+
+
+def run_solver(solver, cnf_path, timeout=120):
+    sat, assignment, elapsed, _ = _run_solver_impl(solver, cnf_path, timeout=timeout)
+    return sat, assignment, elapsed
+
+
+def run_solver_raw(solver, cnf_path, timeout=120):
+    return _run_solver_impl(solver, cnf_path, timeout=timeout)
 
 
 # ── decode ─────────────────────────────────────────────────────────────────────
@@ -155,7 +169,7 @@ def find_puzzle_for_cnf(cnf_path):
 
 # ── public API ─────────────────────────────────────────────────────────────────
 
-def solve_cnf(cnf_path, solver, verbose=True, timeout=3600):
+def solve_cnf(cnf_path, solver, verbose=True, timeout=120):
     basename = os.path.splitext(os.path.basename(cnf_path))[0]
     if verbose:
         print(f"  SAT {os.path.basename(cnf_path)} ...", end=" ", flush=True)
@@ -191,7 +205,7 @@ def main():
     p = argparse.ArgumentParser()
     p.add_argument("--cnf")
     p.add_argument("--solver")
-    p.add_argument("--timeout", type=int, default=3600)
+    p.add_argument("--timeout", type=int, default=120)
     args = p.parse_args()
 
     solver = find_solver(args.solver)

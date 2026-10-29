@@ -86,7 +86,7 @@ def run_9x9_group(puzzles, group_label, prefix):
             row["sat_status"] = "solved"
 
         # Backtracking
-        _, bt_time = bt_mod.solve_puzzle(puzzle_path, verbose=False, timeout=600)
+        _, bt_time = bt_mod.solve_puzzle(puzzle_path, verbose=False, timeout=120)
 
         if bt_time == float("inf"):
             row["bt_time"]   = float("inf")

@@ -14,18 +14,25 @@ reproducibility — the global RNG is never touched.
 """
 
 import os
+import sys
 import math
 import time
+import json
+import csv
 import random
 import copy
+import hashlib
 import subprocess
 import tempfile
 
 SCRIPT_DIR  = os.path.dirname(os.path.abspath(__file__))
 PUZZLES_DIR = os.path.join(SCRIPT_DIR, "..", "Puzzles")
+GENERATION_DIR = os.path.join(SCRIPT_DIR, "..", "GenerationMethods")
 os.makedirs(PUZZLES_DIR, exist_ok=True)
 
 VALID_SIZES = [4, 9, 16, 25, 36, 49, 64]
+DEFAULT_LEGACY_MAX_FILL = 0.50
+DEFAULT_LEGACY_SOFT_FILL = 0.35
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -38,18 +45,19 @@ VALID_SIZES = [4, 9, 16, 25, 36, 49, 64]
 # Represented as 81-char one-line strings (0 = empty).
 
 ROYLE_17_CLUE_STRINGS = [
-    # 5 from puzzle_fetcher.py (Royle #1 through #5)
+    # 10 verified-unique 17-clue puzzles from Gordon Royle's sudoku17 collection
+    # (mirror: github.com/m-k-l-s/sudoku/all_17_clue_sudokus.txt, first 10
+    # entries; every entry below re-verified unique with CaDiCaL).
     "000000010400000000020000000000050407008000300001090000300400200050100000000806000",
-    "000000000000003085001020000000507000040000100090000000500000073002010000000040009",
-    "000006000059000008200008000040500000003000000006003054000325006000000000000000000",
-    "020000000000600003074080000000003002080040010600500000000000780500009000000000000",
-    "005300000800000020070010500400005000010070006000008000060500009000000000000000000",
-    # 5 more from Gordon Royle's well-known set
-    "000000010400000000020000000000050407008000300001090000300400200050100000000806000",
-    "000000013000030080070000000000206000030000900000010000600500204000400700100000000",
-    "000000014008500000300000060000709000060000200400010000000800030000600401050000000",
-    "000000015000030080070000000000206000030000900000010000600500204000400700100000000",
-    "000000016000300080070000000000206000030000900000010000600500204000400700100000000",
+    "000000010400000000020000000000050604008000300001090000300400200050100000000807000",
+    "000000012000035000000600070700000300000400800100000000000120000080000040050000600",
+    "000000012003600000000007000410020000000500300700000600280000040000300500000000000",
+    "000000012008030000000000040120500000000004700060000000507000300000620000000100000",
+    "000000012040050000000009000070600400000100000000000050000087500601000300200000000",
+    "000000012050400000000000030700600400001000000000080000920000800000510700000003000",
+    "000000012300000060000040000900000500000001070020000000000350400001400800060000000",
+    "000000012400090000000000050070200000600000400000108000018000000000030700502000000",
+    "000000012500008000000700000600120000700000450000030000030000800000500700020000000",
 ]
 
 
@@ -117,15 +125,16 @@ def _pattern(r, c, base, side):
     return (base * (r % base) + r // base + c) % side
 
 
-def generate_solution(n, rng=None):
+def generate_solution(n, rng=None, trace=None):
     """
     Generate a full valid n×n Sudoku solution instantly using the
     deterministic base-pattern method with random band/stack shuffling.
 
     Parameters
     ----------
-    n   : board size (must be a perfect square)
-    rng : random.Random instance (for reproducibility)
+    n     : board size (must be a perfect square)
+    rng   : random.Random instance (for reproducibility)
+    trace : optional dict populated with every random permutation used
 
     Returns
     -------
@@ -135,7 +144,7 @@ def generate_solution(n, rng=None):
         rng = random.Random()
 
     base = int(math.isqrt(n))
-    assert base * base == n, f"n={n} is not a perfect square"
+    assert base * base == n, f"n={n} must be a perfect square"
     side = n
 
     def _shuffle(seq):
@@ -143,13 +152,38 @@ def generate_solution(n, rng=None):
         rng.shuffle(lst)
         return lst
 
-    rows = [g * base + r for g in _shuffle(range(base)) for r in _shuffle(range(base))]
-    cols = [g * base + c for g in _shuffle(range(base)) for c in _shuffle(range(base))]
+    band_order = _shuffle(range(base))
+    row_order = []
+    rows_within_bands = []
+    for band in band_order:
+        offsets = _shuffle(range(base))
+        rows_within_bands.append(offsets)
+        row_order.extend(band * base + offset for offset in offsets)
+
+    stack_order = _shuffle(range(base))
+    column_order = []
+    columns_within_stacks = []
+    for stack in stack_order:
+        offsets = _shuffle(range(base))
+        columns_within_stacks.append(offsets)
+        column_order.extend(stack * base + offset for offset in offsets)
+
     nums = _shuffle(range(1, side + 1))
 
+    if trace is not None:
+        trace.update({
+            "band_order": list(band_order),
+            "rows_within_bands": [list(v) for v in rows_within_bands],
+            "row_order": list(row_order),
+            "stack_order": list(stack_order),
+            "columns_within_stacks": [list(v) for v in columns_within_stacks],
+            "column_order": list(column_order),
+            "symbol_order": list(nums),
+        })
+
     grid = [
-        [nums[_pattern(r, c, base, side)] for c in cols]
-        for r in rows
+        [nums[_pattern(r, c, base, side)] for c in column_order]
+        for r in row_order
     ]
     return grid
 
@@ -157,17 +191,79 @@ def generate_solution(n, rng=None):
 # ── Default clue targets ─────────────────────────────────────────────────────
 
 def _default_clues(n):
-    """Sensible default number of clues for a given board size."""
+    """Sensible default number of clues for a given board size.
+
+    Uses graduated sparsity: larger grids are targeted at a lower fill
+    fraction (16x16 -> 25%, 25x25 -> 20%, 36x36 -> 14%).  For seeded legacy
+    puzzles these are lower bounds: uniqueness may require extra clues, with
+    a hard cap controlled by ``DEFAULT_LEGACY_MAX_FILL``.
+    """
     defaults = {
-        4:   4,
-        9:  25,
-        16:  90,
-        25: 220,
-        36: 500,
-        49: 900,
-        64: 1600,
+        4:   4,     # 25%
+        9:  25,     # 31%
+        16:  64,    # 25%
+        25: 125,    # 20%
+        36: 180,    # 14%
+        49: 280,    # 12%
+        64: 380,    # 9%
     }
     return defaults.get(n, int(n * n * 0.35))
+
+
+def derive_puzzle_seed(master_seed, generator, n, index, attempt=0):
+    """Derive a stable 31-bit puzzle seed from the experiment coordinates."""
+    payload = f"{master_seed}|{generator}|{n}|{index}|{attempt}".encode("ascii")
+    return int.from_bytes(hashlib.sha256(payload).digest()[:4], "big") & 0x7FFFFFFF
+
+
+def puzzle_name_for(generator, n, seed, index):
+    return f"sudoku_{n}x{n}_{generator}_seed{seed}_{index:02d}"
+
+
+def _choices_path_for(puzzle_path):
+    return os.path.splitext(puzzle_path)[0] + "_choices.json"
+
+
+def _write_json(path, payload):
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, "w", encoding="utf-8") as handle:
+        json.dump(payload, handle, indent=2, sort_keys=True)
+        handle.write("\n")
+
+
+def _grid_digest(grid):
+    if grid is None:
+        return ""
+    payload = "\n".join(" ".join(str(v) for v in row) for row in grid)
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+
+def _write_seed_index(directory, rows):
+    if not rows:
+        return None
+    path = os.path.join(directory, "puzzle_seeds.csv")
+    fields = [
+        "master_seed",
+        "generator",
+        "size",
+        "index",
+        "attempt",
+        "puzzle_seed",
+        "puzzle_name",
+        "puzzle_path",
+        "choices_path",
+        "clue_count",
+        "fill_pct",
+        "unique",
+        "generation_time_s",
+        "puzzle_hash",
+        "solution_hash",
+    ]
+    with open(path, "w", newline="", encoding="utf-8") as handle:
+        writer = csv.DictWriter(handle, fieldnames=fields)
+        writer.writeheader()
+        writer.writerows(rows)
+    return path
 
 
 # ── Constraint propagation (naked singles) ───────────────────────────────────
@@ -333,18 +429,16 @@ def _check_unique_sat(grid, n, solver_path=None, timeout=30):
 # ── Main generator ───────────────────────────────────────────────────────────
 
 def generate_puzzle(n, seed=None, target_clues=None, ensure_unique=True,
-                    solver_path=None, timeout=60):
+                    solver_path=None, timeout=60, max_fill=DEFAULT_LEGACY_MAX_FILL,
+                    soft_fill=DEFAULT_LEGACY_SOFT_FILL, uniqueness_timeout=30,
+                    batch_fraction=0.05):
     """
-    Generate a Sudoku puzzle by creating a full solution and then removing cells.
+    Generate a Sudoku puzzle by creating a full solution and removing cells.
 
-    Parameters
-    ----------
-    n              : board size (must be a perfect square: 4, 9, 16, …, 64)
-    seed           : int seed for reproducibility (None = random)
-    target_clues   : desired number of clues (None = use sensible default)
-    ensure_unique  : if True, verify each removal preserves unique solvability
-    solver_path    : path to SAT solver binary (for SAT-based uniqueness check)
-    timeout        : max seconds for the entire generation process
+    For n >= 16 removal uses a fast deducibility gate in batches.  If that
+    leaves more clues than ``max_fill``, individual clue removals are verified
+    with SAT until the hard cap is met.  The historical clue target is used as
+    a lower bound; extra clues are allowed when required for uniqueness.
 
     Returns
     -------
@@ -359,92 +453,222 @@ def generate_puzzle(n, seed=None, target_clues=None, ensure_unique=True,
     rng = random.Random(seed)
     t0 = time.time()
 
-    # Step 1: Generate a full valid solution
-    solution = generate_solution(n, rng=rng)
+    solution_trace = {}
+    solution = generate_solution(n, rng=rng, trace=solution_trace)
 
-    # Step 2: Start with the full solution as the puzzle
     puzzle = [row[:] for row in solution]
     total_cells = n * n
     current_clues = total_cells
 
-    # Build a shuffled list of all filled positions
     cells = [(r, c) for r in range(n) for c in range(n)]
     rng.shuffle(cells)
+    choices = {
+        "solution": solution_trace,
+        "cell_order": [[r, c] for r, c in cells],
+        "removed_cells": [],
+        "restored_cells": [],
+        "batch_events": [],
+        "target_clues": target_clues,
+        "max_fill": max_fill,
+        "soft_fill": soft_fill,
+        "batch_fraction": batch_fraction,
+    }
 
-    # Step 3: Remove cells one at a time
+    uniqueness_checks = 0
+    uniqueness_time_s = 0.0
     removal_failures = 0
-    for r, c in cells:
-        if current_clues <= target_clues:
-            break
-        if time.time() - t0 > timeout:
-            break
+    deducibility_checks = 0
+    sat_checks = 0
+    refined_cells = []
 
-        saved_val = puzzle[r][c]
-        if saved_val == 0:
-            continue
+    def _is_deducible():
+        nonlocal deducibility_checks, uniqueness_time_s
+        started = time.perf_counter()
+        try:
+            from uniqueness import deducibility_check
+            result = deducibility_check(puzzle, n).get("unique") is True
+        except Exception:
+            _, complete, contradiction = _constraint_propagate(puzzle, n)
+            result = bool(complete and not contradiction)
+        deducibility_checks += 1
+        uniqueness_time_s += time.perf_counter() - started
+        return result
 
-        puzzle[r][c] = 0
-        current_clues -= 1
+    def _is_unique_sat():
+        nonlocal sat_checks, uniqueness_checks, uniqueness_time_s
+        started = time.perf_counter()
+        result = _check_unique_sat(
+            puzzle, n, solver_path=solver_path,
+            timeout=uniqueness_timeout,
+        )
+        sat_checks += 1
+        uniqueness_checks += 1
+        uniqueness_time_s += time.perf_counter() - started
+        return bool(result)
 
-        if ensure_unique:
-            # Strategy depends on board size:
-            # - n <= 9: full backtracking uniqueness check on every removal
-            # - n >= 16 without SAT solver: use constraint propagation (naked/hidden singles)
-            #   as a practical uniqueness proxy — if the puzzle is fully solvable by
-            #   propagation alone, it provably has a unique solution (Mašulović 2022).
-            #   This avoids the 72-80% clue density problem from conservative fallback.
-            # - n >= 16 with SAT solver: use SAT blocking check
-            if n <= 9:
-                # Check uniqueness on every cell removal
-                _, is_complete, had_contradiction = _constraint_propagate(puzzle, n)
-                if had_contradiction:
+    if ensure_unique and n >= 16:
+        batch_size = max(1, int(round(total_cells * batch_fraction)))
+        hard_cap = int(math.floor(max_fill * total_cells + 1e-9))
+        propagation_deadline = t0 + min(timeout, 60.0)
+
+        def _process_batch(batch):
+            nonlocal current_clues, removal_failures
+            if not batch or current_clues <= target_clues:
+                return
+            if time.time() > propagation_deadline:
+                return
+
+            take = min(len(batch), current_clues - target_clues)
+            subset = batch[:take]
+            saved = []
+            for r, c in subset:
+                saved.append((r, c, puzzle[r][c]))
+                puzzle[r][c] = 0
+
+            if _is_deducible():
+                current_clues -= len(subset)
+                choices["removed_cells"].extend([[r, c] for r, c in subset])
+                choices["batch_events"].append({
+                    "size": len(subset),
+                    "accepted": True,
+                    "cells": [[r, c] for r, c in subset],
+                })
+                return
+
+            for r, c, value in reversed(saved):
+                puzzle[r][c] = value
+            removal_failures += 1
+            choices["restored_cells"].extend([[r, c] for r, c in subset])
+            choices["batch_events"].append({
+                "size": len(subset),
+                "accepted": False,
+                "cells": [[r, c] for r, c in subset],
+            })
+
+            if len(subset) > 1:
+                middle = len(subset) // 2
+                _process_batch(subset[:middle])
+                _process_batch(subset[middle:])
+
+        for start in range(0, len(cells), batch_size):
+            if current_clues <= target_clues or time.time() > propagation_deadline:
+                break
+            _process_batch(cells[start:start + batch_size])
+
+        if current_clues > hard_cap:
+            remaining = [
+                (r, c) for r, c in cells
+                if puzzle[r][c] != 0
+            ]
+            for r, c in remaining:
+                if current_clues <= hard_cap:
+                    break
+                if time.time() - t0 > timeout:
+                    break
+                value = puzzle[r][c]
+                puzzle[r][c] = 0
+                current_clues -= 1
+                if _is_unique_sat():
+                    refined_cells.append([r, c])
+                    choices["removed_cells"].append([r, c])
+                    choices["batch_events"].append({
+                        "size": 1,
+                        "accepted": True,
+                        "cells": [[r, c]],
+                        "phase": "sat-refine",
+                    })
+                else:
+                    puzzle[r][c] = value
+                    current_clues += 1
+                    removal_failures += 1
+                    choices["restored_cells"].append([r, c])
+                    choices["batch_events"].append({
+                        "size": 1,
+                        "accepted": False,
+                        "cells": [[r, c]],
+                        "phase": "sat-refine",
+                    })
+
+    else:
+        for r, c in cells:
+            if current_clues <= target_clues:
+                break
+            if time.time() - t0 > timeout:
+                break
+
+            saved_val = puzzle[r][c]
+            if saved_val == 0:
+                continue
+
+            puzzle[r][c] = 0
+            current_clues -= 1
+
+            if ensure_unique:
+                if not _is_unique_sat():
                     puzzle[r][c] = saved_val
                     current_clues += 1
                     removal_failures += 1
-                    continue
-                if not is_complete:
-                    is_unique = _check_unique_sat(puzzle, n,
-                                                  solver_path=solver_path,
-                                                  timeout=min(10, max(2, timeout - (time.time() - t0))))
-                    if not is_unique:
-                        puzzle[r][c] = saved_val
-                        current_clues += 1
-                        removal_failures += 1
+                    choices["restored_cells"].append([r, c])
+                    choices["batch_events"].append({
+                        "size": 1,
+                        "accepted": False,
+                        "cells": [[r, c]],
+                    })
+                else:
+                    choices["removed_cells"].append([r, c])
+                    choices["batch_events"].append({
+                        "size": 1,
+                        "accepted": True,
+                        "cells": [[r, c]],
+                    })
             else:
-                # Large grids: check every 10 cells or near target
-                should_check = (current_clues % 10 == 0) or (current_clues <= target_clues + 20)
-                if should_check:
-                    _, is_complete, had_contradiction = _constraint_propagate(puzzle, n)
-                    if had_contradiction:
-                        puzzle[r][c] = saved_val
-                        current_clues += 1
-                        removal_failures += 1
-                        continue
-                    if not is_complete:
-                        if solver_path is not None:
-                            # Use SAT blocking check when solver available
-                            is_unique = _check_unique_sat(puzzle, n,
-                                                          solver_path=solver_path,
-                                                          timeout=min(10, max(2, timeout - (time.time() - t0))))
-                            if not is_unique:
-                                puzzle[r][c] = saved_val
-                                current_clues += 1
-                                removal_failures += 1
-                        else:
-                            # No SAT solver: if propagation can't solve, the puzzle
-                            # may or may not be unique. We allow the removal to proceed
-                            # to achieve reasonable clue density. The benchmark will
-                            # still validate all solver outputs post-hoc.
-                            pass
+                choices["removed_cells"].append([r, c])
+                choices["batch_events"].append({
+                    "size": 1,
+                    "accepted": True,
+                    "cells": [[r, c]],
+                })
 
     generation_time = time.time() - t0
+    final_clues = sum(1 for r in range(n) for c in range(n) if puzzle[r][c] != 0)
+    final_fill = final_clues / total_cells
+    uniqueness_verified = bool(ensure_unique)
+
+    propagation_solved = None
+    propagation_contradiction = None
+    if n >= 16:
+        try:
+            _, propagation_solved, propagation_contradiction = _constraint_propagate(puzzle, n)
+        except Exception:
+            propagation_solved = None
+            propagation_contradiction = None
 
     metadata = {
         "seed": seed,
         "n": n,
-        "num_clues": sum(1 for r in range(n) for c in range(n) if puzzle[r][c] != 0),
+        "num_clues": final_clues,
+        "fill_pct": round(100.0 * final_fill, 4),
+        "target_clues": target_clues,
+        "reached_target": final_clues <= target_clues,
+        "max_fill": max_fill,
+        "soft_fill": soft_fill,
+        "above_soft_cap": final_fill > soft_fill,
+        "above_max_fill": final_fill > max_fill,
         "generation_time_s": round(generation_time, 4),
-        "uniqueness_verified": ensure_unique and ((n <= 9) or solver_path is not None),
+        "uniqueness_verified": uniqueness_verified,
+        "uniqueness_policy": (
+            "deducibility-greedy+sat-refine" if ensure_unique and n >= 16
+            else ("exact-per-removal" if ensure_unique else "none")
+        ),
+        "uniqueness_checks": uniqueness_checks,
+        "deducibility_checks": deducibility_checks,
+        "sat_checks": sat_checks,
+        "sat_refined_cells": refined_cells,
+        "uniqueness_time_s": round(uniqueness_time_s, 4),
+        "removal_failures": removal_failures,
+        "propagation_solved": propagation_solved,
+        "propagation_contradiction": propagation_contradiction,
+        "choices": choices,
     }
 
     return puzzle, solution, metadata
@@ -578,37 +802,256 @@ def count_clues(grid):
     return sum(v != 0 for row in grid for v in row)
 
 
-def assemble_dataset(sizes=None, puzzles_per_size=5, seed=42,
-                     solver_path=None, timeout=60):
+def _load_back_circulant_generator():
+    if GENERATION_DIR not in sys.path:
+        sys.path.insert(0, GENERATION_DIR)
+    from back_circulant import generate_back_circulant_puzzle
+
+    return generate_back_circulant_puzzle
+
+
+def _write_choices_sidecar(*, master_seed, generator, n, index, attempt,
+                           puzzle_seed, puzzle_name, puzzle_path, metadata):
+    path = _choices_path_for(puzzle_path)
+    payload = {
+        "master_seed": master_seed,
+        "generator": generator,
+        "size": n,
+        "index": index,
+        "attempt": attempt,
+        "puzzle_seed": puzzle_seed,
+        "puzzle_name": puzzle_name,
+        "puzzle_path": puzzle_path,
+        "metadata": metadata,
+    }
+    _write_json(path, payload)
+    return path
+
+
+def _assemble_back_circulant_dataset(sizes, puzzles_per_size, seed):
+    generator = _load_back_circulant_generator()
+    directory = os.path.join(PUZZLES_DIR, "back_circulant")
+    dataset = []
+    index_rows = []
+
+    for n in sizes:
+        group = "4x4" if n == 4 else ("9x9-generated" if n == 9 else f"{n}x{n}")
+        print(f"\n── {group} (back-circulant) ──")
+        for index in range(1, puzzles_per_size + 1):
+            puzzle_seed = derive_puzzle_seed(seed, "back_circulant", n, index)
+            puzzle, solution, meta = generator(n, seed=puzzle_seed)
+            meta["master_seed"] = seed
+            name = puzzle_name_for("back_circulant", n, puzzle_seed, index)
+            path = save_puzzle(puzzle, n, name, solution=solution, directory=directory)
+            choices_path = _write_choices_sidecar(
+                master_seed=seed,
+                generator="back_circulant",
+                n=n,
+                index=index,
+                attempt=0,
+                puzzle_seed=puzzle_seed,
+                puzzle_name=name,
+                puzzle_path=path,
+                metadata=meta,
+            )
+            print(f"  {name}  ({meta['clue_count']} clues, "
+                  f"{meta['fill_pct']:.2f}% fill, {meta['generation_time_s']:.4f}s) "
+                  f"-> {os.path.basename(path)}")
+            dataset.append({
+                "n": n,
+                "group": group,
+                "puzzle_path": path,
+                "solution": solution,
+                "verified_unique": None,
+                "construction_valid": meta["valid"],
+                "generator": "back_circulant",
+                "master_seed": seed,
+                "seed": puzzle_seed,
+                "puzzle_seed": puzzle_seed,
+                "index": index,
+                "attempt": 0,
+                "choices_path": choices_path,
+                "metadata_path": choices_path,
+                "metadata": meta,
+                "clue_count": meta["clue_count"],
+                "fill_pct": meta["fill_pct"],
+                "generation_time_s": meta["generation_time_s"],
+            })
+            index_rows.append({
+                "master_seed": seed,
+                "generator": "back_circulant",
+                "size": n,
+                "index": index,
+                "attempt": 0,
+                "puzzle_seed": puzzle_seed,
+                "puzzle_name": name,
+                "puzzle_path": path,
+                "choices_path": choices_path,
+                "clue_count": meta["clue_count"],
+                "fill_pct": f"{meta['fill_pct']:.4f}",
+                "unique": "",
+                "generation_time_s": f"{meta['generation_time_s']:.9f}",
+                "puzzle_hash": meta["puzzle_hash"],
+                "solution_hash": meta["solution_hash"],
+            })
+
+    index_path = _write_seed_index(directory, index_rows)
+    total = len(dataset)
+    valid_count = sum(1 for d in dataset if d["construction_valid"])
+    print(f"\n--- Dataset assembled: {total} puzzles "
+          f"({valid_count} construction-valid) ---")
+    print(f"Puzzle directory: {os.path.abspath(directory)}")
+    print(f"Seed index:       {index_path}")
+    return dataset
+
+
+def _assemble_legacy_seeded_dataset(sizes, puzzles_per_size, seed, solver_path,
+                                    timeout, max_fill, soft_fill,
+                                    uniqueness_timeout, max_attempts=20):
+    directory = os.path.join(PUZZLES_DIR, "legacy")
+    dataset = []
+    index_rows = []
+
+    for n in sizes:
+        group = "4x4" if n == 4 else ("9x9-generated" if n == 9 else f"{n}x{n}")
+        print(f"\n── {group} (legacy, seeded) ──")
+        hard_cap = int(math.floor(max_fill * n * n))
+        for index in range(1, puzzles_per_size + 1):
+            attempt = 0
+            while True:
+                puzzle_seed = derive_puzzle_seed(seed, "legacy", n, index, attempt)
+                puzzle, solution, meta = generate_puzzle(
+                    n,
+                    seed=puzzle_seed,
+                    ensure_unique=True,
+                    solver_path=solver_path,
+                    timeout=timeout,
+                    max_fill=max_fill,
+                    soft_fill=soft_fill,
+                    uniqueness_timeout=uniqueness_timeout,
+                )
+                meta["master_seed"] = seed
+                if meta["num_clues"] <= hard_cap:
+                    break
+                attempt += 1
+                if attempt >= max_attempts:
+                    raise RuntimeError(
+                        f"legacy {n}x{n} puzzle {index} exceeded the "
+                        f"{max_fill:.0%} clue cap after {max_attempts} attempts"
+                    )
+
+            name = puzzle_name_for("legacy", n, puzzle_seed, index)
+            path = save_puzzle(puzzle, n, name, solution=solution, directory=directory)
+            choices_path = _write_choices_sidecar(
+                master_seed=seed,
+                generator="legacy",
+                n=n,
+                index=index,
+                attempt=attempt,
+                puzzle_seed=puzzle_seed,
+                puzzle_name=name,
+                puzzle_path=path,
+                metadata=meta,
+            )
+            print(f"  {name}  ({meta['num_clues']} clues, "
+                  f"{meta['fill_pct']:.2f}% fill, "
+                  f"unique={recorder_flag(meta['uniqueness_verified'])}, "
+                  f"{meta['generation_time_s']:.2f}s) -> {os.path.basename(path)}")
+            dataset.append({
+                "n": n,
+                "group": group,
+                "puzzle_path": path,
+                "solution": solution,
+                "verified_unique": meta["uniqueness_verified"],
+                "construction_valid": meta["uniqueness_verified"],
+                "generator": "legacy",
+                "master_seed": seed,
+                "seed": puzzle_seed,
+                "puzzle_seed": puzzle_seed,
+                "index": index,
+                "attempt": attempt,
+                "choices_path": choices_path,
+                "metadata_path": choices_path,
+                "metadata": meta,
+                "clue_count": meta["num_clues"],
+                "fill_pct": meta["fill_pct"],
+                "generation_time_s": meta["generation_time_s"],
+            })
+            index_rows.append({
+                "master_seed": seed,
+                "generator": "legacy",
+                "size": n,
+                "index": index,
+                "attempt": attempt,
+                "puzzle_seed": puzzle_seed,
+                "puzzle_name": name,
+                "puzzle_path": path,
+                "choices_path": choices_path,
+                "clue_count": meta["num_clues"],
+                "fill_pct": f"{meta['fill_pct']:.4f}",
+                "unique": recorder_flag(meta["uniqueness_verified"]),
+                "generation_time_s": f"{meta['generation_time_s']:.9f}",
+                "puzzle_hash": _grid_digest(puzzle),
+                "solution_hash": _grid_digest(solution),
+            })
+
+    index_path = _write_seed_index(directory, index_rows)
+    total = len(dataset)
+    unique_count = sum(1 for d in dataset if d["verified_unique"])
+    print(f"\n--- Dataset assembled: {total} puzzles "
+          f"({unique_count} uniqueness-verified) ---")
+    print(f"Puzzle directory: {os.path.abspath(directory)}")
+    print(f"Seed index:       {index_path}")
+    return dataset
+
+
+def recorder_flag(value):
+    return "YES" if value else "NO"
+
+def assemble_dataset(sizes=None, puzzles_per_size=10, seed=42,
+                     solver_path=None, timeout=60, generator="back_circulant",
+                     include_known=False, generation_timeout=600,
+                     max_fill=DEFAULT_LEGACY_MAX_FILL,
+                     soft_fill=DEFAULT_LEGACY_SOFT_FILL,
+                     uniqueness_timeout=30):
     """
     Assemble a complete dataset for benchmarking.
 
-    - For 9×9: includes 17-clue Royle puzzles + generated puzzles
-    - For 4×4: includes hardcoded puzzles
-    - For other sizes: generated puzzles only
-    - All puzzles verified for uniqueness (when feasible)
+    - generator="back_circulant": back-circulant construction for every size
+    - generator="legacy", include_known=False: purely procedural, seeded
+    - generator="legacy", include_known=True: legacy hardcoded/Royle mix
 
-    Parameters
-    ----------
-    sizes            : list of board sizes (default: all valid sizes)
-    puzzles_per_size : number of puzzles per size
-    seed             : master seed for reproducibility
-    solver_path      : path to SAT solver for uniqueness checking
-    timeout          : generation timeout per puzzle (seconds)
+    For legacy n >= 16 uniqueness is enforced with a deducibility-gated
+    removal pass plus SAT refinement.  Extra clues are allowed up to
+    ``max_fill``; a seed is retried if that hard cap is exceeded.
 
     Returns
     -------
     list of dicts:
         [{"n": int, "group": str, "puzzle_path": str,
-          "solution": grid_or_None, "verified_unique": bool}, ...]
+          "solution": grid_or_None, "verified_unique": bool,
+          "generator": str, "seed": int, ...}, ...]
     """
     if sizes is None:
-        sizes = VALID_SIZES
+        sizes = [4, 9, 16, 25, 36]
 
     for s in sizes:
         base = int(math.isqrt(s))
         assert base * base == s, f"Size {s} is not a perfect square"
         assert s in VALID_SIZES, f"Size {s} is not in VALID_SIZES"
+
+    if generator == "back_circulant":
+        return _assemble_back_circulant_dataset(sizes, puzzles_per_size, seed)
+    if generator != "legacy":
+        raise ValueError(f"unknown generator: {generator}")
+    if not include_known:
+        return _assemble_legacy_seeded_dataset(
+            sizes, puzzles_per_size, seed, solver_path,
+            timeout=generation_timeout,
+            max_fill=max_fill,
+            soft_fill=soft_fill,
+            uniqueness_timeout=uniqueness_timeout,
+        )
 
     dataset = []
     master_rng = random.Random(seed)
@@ -618,7 +1061,7 @@ def assemble_dataset(sizes=None, puzzles_per_size=5, seed=42,
         group = f"{n}x{n}"
         print(f"\n── {group} ──")
 
-        # ── For 4×4: use hardcoded puzzles ────────────────────────
+        # ── For 4×4: hardcoded puzzles, then generated extras ─────
         if n == 4:
             for i, grid in enumerate(FOUR_PUZZLES[:puzzles_per_size]):
                 name = f"sudoku_4x4_{i + 1:02d}"
@@ -636,11 +1079,44 @@ def assemble_dataset(sizes=None, puzzles_per_size=5, seed=42,
                     "verified_unique": True,  # hand-verified
                 })
 
+            # Top up with generated 4x4 puzzles when more are requested
+            for i in range(len(FOUR_PUZZLES), puzzles_per_size):
+                sub_seed = master_rng.randint(0, 2**31)
+                puzzle, solution, meta = generate_puzzle(
+                    n, seed=sub_seed, ensure_unique=True,
+                    solver_path=solver_path, timeout=timeout,
+                )
+                name = f"sudoku_4x4_{i + 1:02d}"
+                path = save_puzzle(puzzle, n, name, solution=solution)
+                print(f"  {name}  ({meta['num_clues']} clues, generated, "
+                      f"{meta['generation_time_s']:.2f}s) -> "
+                      f"{os.path.basename(path)}")
+                dataset.append({
+                    "n": n,
+                    "group": "4x4",
+                    "puzzle_path": path,
+                    "solution": solution,
+                    "verified_unique": meta["uniqueness_verified"],
+                })
+
         # ── For 9×9: include Royle 17-clue + generated ───────────
         elif n == 9:
-            # Royle 17-clue puzzles
-            num_royle = min(puzzles_per_size, len(ROYLE_17_CLUE))
-            for i, grid in enumerate(ROYLE_17_CLUE[:num_royle]):
+            # Royle 17-clue puzzles (defensive filter: keep only exact 17-clue,
+            # de-duplicated entries; corrupted rows are never benchmarked)
+            royle_valid = []
+            seen = set()
+            for grid in ROYLE_17_CLUE:
+                key = tuple(map(tuple, grid))
+                if key in seen or count_clues(grid) != 17:
+                    continue
+                seen.add(key)
+                royle_valid.append(grid)
+            skipped = len(ROYLE_17_CLUE) - len(royle_valid)
+            if skipped:
+                print(f"  [note] skipped {skipped} invalid/duplicate Royle entries")
+
+            num_royle = min(puzzles_per_size, len(royle_valid))
+            for i, grid in enumerate(royle_valid[:num_royle]):
                 name = f"sudoku_9x9_17clue_{i + 1:02d}"
                 errors = _validate_grid(grid, n)
                 if errors:

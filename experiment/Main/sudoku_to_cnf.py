@@ -246,7 +246,7 @@ def convert_file(puzzle_path, verbose=True):
     basename = os.path.splitext(os.path.basename(puzzle_path))[0]
     cnf_path = os.path.join(CNF_DIR, basename + ".cnf")
 
-    t0 = time.time()
+    t0 = time.perf_counter()
     n, puzzle = read_puzzle(puzzle_path)
 
     # Collect fixed cells for the FIXED comments
@@ -259,7 +259,7 @@ def convert_file(puzzle_path, verbose=True):
 
     clauses, num_vars, var_map, V0_list = encode(n, puzzle)
     write_dimacs(cnf_path, clauses, num_vars, n, puzzle_path, V0_list, fixed_cells)
-    elapsed = time.time() - t0
+    elapsed = time.perf_counter() - t0
 
     if verbose:
         print(f"  {os.path.basename(puzzle_path)} → {os.path.basename(cnf_path)}")
